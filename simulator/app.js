@@ -1,0 +1,1 @@
+(async function(g){'use strict';await g.MonsterWorldCoreReady;const binary=atob(g.__monsterAppGzip);delete g.__monsterAppGzip;const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));const source=await new Response(stream).text();(0,eval)(source);})(globalThis);
