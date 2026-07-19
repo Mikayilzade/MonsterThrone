@@ -1,9 +1,10 @@
 'use strict';
-importScripts('core.js');
-const Core = self.MonsterWorldCore;
+importScripts('core.payload1.js','core.payload2.js','core.js');
+let Core;
 
-self.onmessage = function (event) {
+self.onmessage = async function (event) {
   try {
+    Core = Core || await self.MonsterWorldCoreReady;
     const baseSeed = event.data.seed || 1;
     const checks = [];
     const add = (name, pass, details) => checks.push({ name, pass: !!pass, details });
