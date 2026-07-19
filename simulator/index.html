@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Monster Throne — World Laboratory v0.3</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Monster Throne</h1>
+      <p>World Laboratory v0.3 — автономные расы, территории, стаи и пищевая цепь</p>
+    </div>
+    <div class="controls" aria-label="Управление симуляцией">
+      <label>Seed <input id="seedInput" type="number" value="19072026" step="1"></label>
+      <label>Площадь
+        <select id="areaScaleSelect">
+          <option value="1">1× стресс-тест</option>
+          <option value="2" selected>2× наблюдение</option>
+          <option value="4">4× просторная</option>
+        </select>
+      </label>
+      <button id="resetButton">Создать мир</button>
+      <button id="pauseButton">Пауза</button>
+      <button class="speed active" data-speed="1">×1</button>
+      <button class="speed" data-speed="5">×5</button>
+      <button class="speed" data-speed="20">×20</button>
+      <button class="speed" data-speed="100">×100</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="status-line">
+      <span><strong>Версия:</strong> 0.3.0</span>
+      <span id="runtimeStatus">готово</span>
+      <button id="runChecksButton" class="secondary">Запустить быстрые автотесты</button>
+    </section>
+
+    <section class="metrics" id="metrics"></section>
+
+    <section class="workspace">
+      <div class="map-card">
+        <canvas id="worldCanvas" width="1200" height="760" aria-label="Карта симуляции"></canvas>
+        <div class="map-hint">
+          Круги — территории рас. Контур цвета расы показывает принадлежность существа. Нажмите на объект для подробностей.
+          На ×100 визуал обновляется реже, чтобы не греть ноутбук без необходимости.
+        </div>
+      </div>
+
+      <aside class="side-panel">
+        <section>
+          <h2>Выбранный объект</h2>
+          <div id="selection" class="selection empty">Ничего не выбрано.</div>
+        </section>
+
+        <section>
+          <h2>Расы и территории</h2>
+          <div id="factionList" class="faction-list"></div>
+        </section>
+
+        <section>
+          <h2>Легенда угрозы</h2>
+          <div class="legend">
+            <span><i style="background:#b9bec7"></i>ниже 25</span>
+            <span><i style="background:#fff3a5"></i>25–49</span>
+            <span><i style="background:#f4d13d"></i>50–99</span>
+            <span><i style="background:#f08a24"></i>100–249</span>
+            <span><i style="background:#e0443e"></i>250–499</span>
+            <span><i style="background:#8b1019"></i>500–750</span>
+            <span><i style="background:#181818"></i>только Король</span>
+          </div>
+        </section>
+
+        <section>
+          <h2>Автотесты</h2>
+          <div id="checkResults" class="check-results muted">Ещё не запускались.</div>
+        </section>
+
+        <section>
+          <h2>События мира</h2>
+          <div id="eventLog" class="event-log"></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script src="core.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
