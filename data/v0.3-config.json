@@ -1,0 +1,17 @@
+{
+  "version": "0.3.0",
+  "defaultSeed": 19072026,
+  "defaultAreaScale": 2,
+  "availableAreaScales": [1, 2, 4],
+  "corpseFreshSeconds": 300,
+  "corpseSpoiledSeconds": 600,
+  "corpseBonesDisappearSeconds": 1200,
+  "rebirthDelaySeconds": 45,
+  "deathStatLoss": 0.1,
+  "highLevelSolitaryThreshold": 500,
+  "packCoordination": 0.72,
+  "sameFactionDuelEnergy": 18,
+  "temporaryFreshMeatRate": 0.1,
+  "permanentFreshMeatRate": 0.01,
+  "status": "EXPERIMENT — numerical balance is not final"
+}
