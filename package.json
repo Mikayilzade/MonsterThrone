@@ -1,0 +1,15 @@
+{
+  "name": "monster-throne-world-lab",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Simulation-first laboratory for Monster Throne",
+  "scripts": {
+    "test": "node simulator/test.js",
+    "test:scenarios": "node simulator/scenarios.js",
+    "test:all": "node simulator/test.js && node simulator/scenarios.js",
+    "serve": "python3 -m http.server 8080"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
