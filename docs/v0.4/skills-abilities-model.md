@@ -1,6 +1,6 @@
 # Базовая модель действий, навыков и приёмов v0.4
 
-Статус: **[AI PROPOSAL]**. Модель подготовлена для первого живого стенда и может быть полностью пересмотрена после наблюдения за симуляцией.
+Статус: **[USER DECISION]**. Модель принята как рабочая база первого живого стенда и может быть пересмотрена после наблюдения за симуляцией.
 
 Подробная проверка вариантов находится в [`skills-abilities-experiment-results.md`](skills-abilities-experiment-results.md).
 
@@ -144,7 +144,7 @@
 - `25–49` — рабочая компетентность;
 - `50–99` — опытное применение;
 - `100` — навык процедурно закреплён и стал устойчивой частью сущности;
-- `100+` — дальнейшие refinements: экономия, точность, вариативность, устойчивость и необычные способы применения.
+- `100+` — дальнейшие улучшения: экономия, точность, вариативность, устойчивость и необычные способы применения.
 
 `100` не является максимумом и не означает абсолютное совершенство. Это рубеж консолидации.
 
@@ -263,7 +263,7 @@
 - текущее телесное привыкание исчезает;
 - процедурный навык хранится в сущности;
 - применимость зависит от нового тела;
-- повреждение души может снизить точность переноса сложных refinements.
+- повреждение души может снизить точность переноса сложных улучшений.
 
 ## Номерное существо
 
@@ -428,110 +428,116 @@
 
 - укус влево;
 - укус вправо;
-- укус красного жука;
-- укус ночью.
+- укус мелкой цели;
+- укус при беге.
 
-Это контексты одного навыка. Отдельная специализация появляется только после устойчивого и значимого расхождения.
+Это контексты одного семейства `контроль укуса` и возможные приёмы.
 
-# 14. Дальние популяции
+# 14. Дальняя симуляция
 
-Когорта обычных существ хранит:
+Обычные дальние существа не обязаны хранить каждый эпизод.
 
-- распределения навыков по семействам действий;
-- долю новичков, опытных и мастеров;
-- культурно известные приёмы;
-- несколько специалистов;
-- лучшие кандидатуры на индивидуализацию.
+Когорта может хранить распределения:
 
-Полные `SkillState` и `TechniqueState` хранятся для:
+```text
+skillFamily
+meanMastery
+variance
+consolidatedShare
+activePractitionerShare
+knownTechniqueCarrierShare
+teacherCount
+culturalSchemas[]
+```
 
-- именных;
-- генералов;
-- уникальных;
-- существ рядом с игроком;
-- участников значимого события;
-- кандидатов на имя.
+При разворачивании когорты в особей показатели распределяются детерминированно по seed, роли, возрасту и истории группы.
 
-При разворачивании когорты конкретные навыки создаются детерминированно из распределений и истории группы.
+Именные существа и лучшие кандидаты на имя всегда сохраняют индивидуальные навыки и приёмы.
 
 # 15. Черновая структура данных
 
 ```text
-ActionDefinition
-  actionId
-  family
-  requiredBodyTags[]
-  requiredModules[]
-  baseCosts
-  baseTiming
-  baseRange
-  failureModes[]
-
 ActionCapability
   actionId
-  sourceModules[]
-  currentCapacity
-  currentCondition
-  energyAvailability
-  transferFamily
+  sourceOrganId
+  actionFamily
+  basePower
+  range
+  preparationTime
+  recoveryTime
+  resourceCosts
+  requiredActivity
+  limitations[]
 
-SkillDefinition
-  skillId
-  actionFamilies[]
-  transferableComponents[]
-  innateBaselineSource
-  consolidationThreshold
+InstinctPattern
+  patternId
+  speciesOrLineId
+  linkedActions[]
+  startingCompetence
+  triggerConditions[]
+  inheritanceMode
+  mutationVariance
 
 SkillState
   skillId
+  actionFamily
   mastery
   readiness
-  consolidated
-  lastMeaningfulUse
-  practiceSummary
-  soulImprint
+  innateBaseline
+  consolidationFloor
+  lastPracticeAt
+  practiceDiversity
+  bodyCompatibility
   dormantReason
+  soulImprint
 
-TechniqueDefinition
+Technique
   techniqueId
+  knownState
   requiredActions[]
   requiredSkills[]
-  requiredBodyTags[]
-  triggerConditions[]
-  sequence[]
-  resourceCosts
-  complexity
-  techniqueType
+  minimumMastery[]
+  bodyRequirements[]
+  contextualConditions[]
+  resourcePlan
+  familiarity
+  reliability
+  signatureOwnerId
+  culturalSources[]
 
-TechniqueState
-  techniqueId
-  schemaKnowledge
-  executionFamiliarity
-  stability
-  habitWeight
-  lastUse
-  discoverySource
-  memoryLayer
+PracticeEpisode
+  actionFamily
+  difficulty
+  meaningfulAttempts
+  successes
+  usefulErrors
+  novelty
+  feedbackQuality
+  attention
+  risk
+  result
 
-GroupCulture
-  knownTechniqueSchemas[]
-  teachingPatterns[]
-  bearerCounts
-  specialistIds[]
-  culturalStability
+ActiveDecisionSet
+  attentionBudget
+  candidateActions[]
+  candidateTechniques[]
+  contextHash
 ```
 
-# 16. Что не фиксируется до живой симуляции
+# 16. Числа, которые пока не фиксируются
 
-- окончательная формула прироста;
-- точная скорость деградации;
-- максимальный либо практически достижимый уровень навыка;
-- числовой эффект каждого уровня;
-- пороги состояний приёма;
-- процент переноса между разными телами;
-- объём активного внимания;
-- точные правила повреждения навыка душевными атаками;
-- количество сохраняемых культурных схем;
-- конкретный список стартовых навыков видов.
+До живого стенда не считаются решениями:
 
-Для первого стенда важна структура и наблюдаемое поведение, а не финальная балансировка.
+- точная формула прироста мастерства;
+- скорость падения готовности;
+- скорость забывания ниже и выше 100;
+- числовое влияние уровня навыка на действие;
+- максимальный достижимый уровень;
+- процент переноса между органами;
+- процент сохранения незакреплённого навыка после смерти;
+- число активных кандидатов при разном интеллекте;
+- порог открытия и освоения приёма;
+- объём культуры группы;
+- список конкретных навыков каждого вида.
+
+Эти числа должны проверяться вместе с реальными органами, действиями, картой и скоростью симуляции.
