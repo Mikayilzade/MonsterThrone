@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>Monster Throne — World Lab v0.4</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Monster Throne <span>World Lab v0.4</span></h1>
+      <p>Первый живой стенд автономной экосистемы</p>
+    </div>
+    <div class="seed-controls">
+      <label>Seed <input id="seedInput" inputmode="numeric" value="19072026"></label>
+      <button id="resetButton">Новый мир</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="world-panel">
+      <div class="toolbar">
+        <button id="pauseButton" class="primary">Пауза</button>
+        <button id="stepButton">+1 сек</button>
+        <div class="speed-group" role="group" aria-label="Скорость мира">
+          <button data-speed="1" class="active">×1</button>
+          <button data-speed="5">×5</button>
+          <button data-speed="20">×20</button>
+          <button data-speed="100">×100</button>
+        </div>
+        <button id="prehistoryButton">Прожить 2 часа</button>
+        <label class="search">Найти <input id="searchInput" placeholder="C81 или имя"></label>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="worldCanvas" width="1000" height="1000"></canvas>
+        <div class="canvas-hint">Нажми на существо, чтобы открыть полный инспектор</div>
+      </div>
+
+      <div id="metrics" class="metrics"></div>
+      <div id="speciesLegend" class="legend"></div>
+    </section>
+
+    <aside class="side-panel">
+      <section class="inspector-card">
+        <div class="section-title">
+          <h2>Инспектор существа</h2>
+          <button id="followButton" disabled>Следить</button>
+        </div>
+        <div id="inspector" class="inspector empty">Выбери точку на карте.</div>
+      </section>
+
+      <section class="event-card">
+        <div class="section-title"><h2>События мира</h2><span id="worldClock"></span></div>
+        <div id="eventLog" class="event-log"></div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="./config.js"></script>
+  <script src="./core.payload1.js"></script>
+  <script src="./core.payload2.js"></script>
+  <script src="./core.payload3.js"></script>
+  <script src="./core.js"></script>
+  <script src="./app.payload1.js"></script>
+  <script src="./app.payload2.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
