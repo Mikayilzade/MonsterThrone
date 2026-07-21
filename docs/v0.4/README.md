@@ -47,6 +47,7 @@ v0.3 остаётся зафиксированной рабочей лабора
 - [`reproduction-model.md`](reproduction-model.md) — принятая базовая модель размножения и дальних популяций;
 - [`reproduction-experiment-results.md`](reproduction-experiment-results.md) — экспериментальная проверка вариантов размножения;
 - [`races-and-mutations.md`](races-and-mutations.md) — виды, расы, линии и мутации;
+- [`evolution-experiment-results.md`](evolution-experiment-results.md) — 970 многопоколенных прогонов наследования, линий и новых рас;
 - [`creature-inspector.md`](creature-inspector.md) — подробное окно существа;
 - [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) — нерешённые вопросы в порядке приоритета.
 
