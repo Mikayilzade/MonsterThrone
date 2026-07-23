@@ -1,12 +1,17 @@
 {
   "name": "monster-throne-world-lab",
-  "version": "0.3.0",
+  "version": "0.4.0-alpha.2",
   "private": true,
   "description": "Simulation-first laboratory for Monster Throne",
   "scripts": {
     "test": "node simulator/test.js",
-    "test:scenarios": "node simulator/scenarios.js",
-    "test:all": "node simulator/test.js && node simulator/scenarios.js",
+    "test:v03": "node simulator/test.js",
+    "test:v03:scenarios": "node simulator/scenarios.js",
+    "test:v04": "node v04/test.js",
+    "test:v04:scenarios": "node v04/scenarios.js",
+    "test:v04:ui": "node v04/ui-helpers.test.js",
+    "test:v04:all": "node v04/test.js && node v04/scenarios.js && node v04/ui-helpers.test.js",
+    "test:all": "node simulator/test.js && node simulator/scenarios.js && node v04/test.js && node v04/scenarios.js && node v04/ui-helpers.test.js",
     "serve": "python3 -m http.server 8080"
   },
   "engines": {

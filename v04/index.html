@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1020">
+  <title>Monster Throne — Лаборатория мира v0.4</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Monster Throne <span>Лаборатория мира v0.4</span></h1>
+      <p>Наблюдай за автономной экосистемой и разбирай судьбу любого существа</p>
+    </div>
+    <div class="seed-controls">
+      <label>Ключ мира <input id="seedInput" inputmode="numeric" value="19072026" aria-label="Ключ мира"></label>
+      <button id="resetButton">Создать новый мир</button>
+      <button id="helpButton" class="quiet">Что здесь смотреть?</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="world-panel panel">
+      <div class="purpose-strip">
+        <div>
+          <strong id="worldStatusTitle">Мир на паузе</strong>
+          <span id="worldStatusText">Выбери существо или запусти время.</span>
+        </div>
+        <div id="boundaryStatus" class="status-pill">Проверка границы…</div>
+      </div>
+
+      <div class="toolbar" aria-label="Управление временем и картой">
+        <button id="pauseButton" class="primary">Запустить</button>
+        <button id="stepButton">+1 секунда</button>
+        <div class="speed-group" role="group" aria-label="Скорость мира">
+          <button data-speed="1" class="active">×1</button>
+          <button data-speed="5">×5</button>
+          <button data-speed="20">×20</button>
+          <button data-speed="100">×100</button>
+        </div>
+        <button id="prehistoryButton">Прожить 2 часа</button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="zoomOutButton" title="Отдалить карту">−</button>
+        <button id="fitButton" title="Показать весь мир">Весь мир</button>
+        <button id="zoomInButton" title="Приблизить карту">+</button>
+        <label class="labels-control">Подписи
+          <select id="labelMode">
+            <option value="important">важные</option>
+            <option value="selected">только выбранное</option>
+            <option value="all">все существа</option>
+            <option value="none">скрыть</option>
+          </select>
+        </label>
+        <label class="search">Найти <input id="searchInput" placeholder="C81, имя или вид"></label>
+      </div>
+
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="worldCanvas" width="1200" height="760" aria-label="Карта автономного мира"></canvas>
+        <div id="mapTooltip" class="map-tooltip" hidden></div>
+        <div class="canvas-hint">Клик выбирает ближайшее существо • колесо приближает • перетаскивание двигает карту</div>
+        <div id="mapNotice" class="map-notice" hidden></div>
+      </div>
+
+      <div id="metrics" class="metrics"></div>
+
+      <section class="legend-card" aria-label="Легенда карты">
+        <div class="legend-heading">
+          <div>
+            <strong>Что означают точки</strong>
+            <span>Существа — круги, растения — квадраты, туши — ромбы. Красная обводка означает выход за внешнюю границу.</span>
+          </div>
+          <button id="legendToggle" class="quiet">Свернуть</button>
+        </div>
+        <div id="speciesLegend" class="legend"></div>
+      </section>
+    </section>
+
+    <aside class="side-panel">
+      <section class="inspector-card panel">
+        <div class="section-title">
+          <div>
+            <h2>История выбранного существа</h2>
+            <span id="selectionHint">Выбери круг на карте или найди существо по номеру</span>
+          </div>
+          <div class="section-actions">
+            <button id="centerButton" disabled>Показать на карте</button>
+            <button id="followButton" disabled>Следить</button>
+          </div>
+        </div>
+
+        <div id="creatureStory" class="creature-story empty">
+          <strong>Пока никто не выбран</strong>
+          <p>Нажми рядом с любой цветной точкой. Точное попадание больше не требуется.</p>
+        </div>
+
+        <nav id="inspectorTabs" class="inspector-tabs" aria-label="Разделы инспектора" hidden>
+          <button data-tab="overview" class="active">Главное</button>
+          <button data-tab="progression">Развитие</button>
+          <button data-tab="body">Тело</button>
+          <button data-tab="skills">Навыки</button>
+          <button data-tab="life">Жизнь</button>
+        </nav>
+        <div id="inspector" class="inspector empty">Данные появятся после выбора существа.</div>
+      </section>
+
+      <section class="event-card panel">
+        <div class="section-title">
+          <div>
+            <h2>Что происходит в мире</h2>
+            <span id="worldClock">00:00</span>
+          </div>
+          <label class="event-filter">Показывать
+            <select id="eventFilter">
+              <option value="important">важное</option>
+              <option value="all">все события</option>
+              <option value="death">смерти</option>
+              <option value="birth">рождения</option>
+              <option value="rebirth">перерождения</option>
+              <option value="mutation">мутации</option>
+              <option value="name">имена</option>
+            </select>
+          </label>
+        </div>
+        <div id="worldBrief" class="world-brief"></div>
+        <div id="eventLog" class="event-log"></div>
+      </section>
+    </aside>
+  </main>
+
+  <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+    <div class="modal-card">
+      <button id="helpCloseX" class="modal-close" aria-label="Закрыть">×</button>
+      <h2 id="helpTitle">Что это за окно?</h2>
+      <p>Это не готовая игра, а живой наблюдательный стенд. Мир существует сам: существа питаются, охотятся, растут, размножаются, погибают и перерождаются.</p>
+      <div class="help-grid">
+        <article><span>1</span><strong>Выбери существо</strong><p>Нажми рядом с цветным кругом. Справа появится понятное объяснение его текущего поведения.</p></article>
+        <article><span>2</span><strong>Запусти время</strong><p>Начни с ×1 или ×5. ×100 предназначено для долгих прогонов, а не для наблюдения за отдельной судьбой.</p></article>
+        <article><span>3</span><strong>Следи за историей</strong><p>Смотри, почему меняется уровень, что ограничивает рост, кого существо боится и как повреждается его душа.</p></article>
+      </div>
+      <div class="help-note"><strong>Внешний край:</strong> точки за последней окружностью подсвечиваются красным и считаются диагностической проблемой, а не скрытой механикой.</div>
+      <button id="helpCloseButton" class="primary wide">Понятно, начать наблюдение</button>
+    </div>
+  </div>
+
+  <div id="busyOverlay" class="busy-overlay" hidden>
+    <div><span class="spinner"></span><strong id="busyTitle">Мир проживает время…</strong><small id="busyText"></small></div>
+  </div>
+
+  <script src="./config.js"></script>
+  <script src="./core.payload1.js"></script>
+  <script src="./core.payload2.js"></script>
+  <script src="./core.payload3.js"></script>
+  <script src="./core.js"></script>
+  <script src="./ui-helpers.js"></script>
+  <script src="./app.payload1.js"></script>
+  <script src="./app.payload2.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
