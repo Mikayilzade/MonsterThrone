@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0b1720">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Monster Throne — Путь слабого</title>
+</head>
+<body>
+  <canvas id="gameCanvas" aria-label="Игровой мир"></canvas>
+
+  <div id="hud" class="hud hidden">
+    <header class="top-hud glass">
+      <div class="hero-line">
+        <strong id="heroName">Странник</strong>
+        <span id="levelText">ур. 1 / потолок 1</span>
+        <span id="artifactBadge" class="artifact-badge" title="Душа не может быть повреждена">◆ Якорь вечной души</span>
+      </div>
+      <div class="bars">
+        <div class="bar-row"><span>Жизнь</span><div class="bar"><i id="hpBar"></i></div><b id="hpText"></b></div>
+        <div class="bar-row"><span>Выносливость</span><div class="bar stamina"><i id="staminaBar"></i></div><b id="staminaText"></b></div>
+        <div class="bar-row"><span>Голод</span><div class="bar hunger"><i id="hungerBar"></i></div><b id="hungerText"></b></div>
+        <div class="bar-row compact"><span>Созревание</span><div class="bar progress"><i id="levelBar"></i></div><b id="levelProgressText"></b></div>
+      </div>
+      <div class="top-actions">
+        <button id="pauseButton" class="icon-button" aria-label="Пауза">Ⅱ</button>
+        <button id="journalButton" class="icon-button" aria-label="Журнал">☰</button>
+        <button id="soundButton" class="icon-button" aria-label="Звук">♪</button>
+      </div>
+    </header>
+
+    <section id="questCard" class="quest-card glass">
+      <div class="eyebrow">Текущая цель</div>
+      <strong id="questTitle"></strong>
+      <p id="questText"></p>
+      <div class="quest-progress"><i id="questProgress"></i></div>
+    </section>
+
+    <section id="targetCard" class="target-card glass hidden">
+      <div class="target-head"><strong id="targetName"></strong><span id="targetThreat"></span></div>
+      <div class="mini-bar"><i id="targetHpBar"></i></div>
+      <p id="targetHint"></p>
+    </section>
+
+    <section id="quickbar" class="quickbar glass">
+      <button data-action="attack"><kbd>ЛКМ</kbd><span>Удар</span></button>
+      <button data-action="dodge"><kbd>Shift</kbd><span>Рывок</span></button>
+      <button data-action="trap"><kbd>Q</kbd><span>Ловушка</span><b id="trapCount">0</b></button>
+      <button data-action="interact"><kbd>E</kbd><span>Взять / съесть</span></button>
+      <button data-action="food"><kbd>R</kbd><span>Еда</span><b id="foodCount">0</b></button>
+    </section>
+
+    <aside id="journalPanel" class="side-panel glass hidden" aria-label="Журнал и персонаж">
+      <div class="panel-head">
+        <div class="tabs">
+          <button data-tab="journal" class="active">Журнал</button>
+          <button data-tab="character">Герой</button>
+          <button data-tab="skills">Навыки</button>
+          <button data-tab="help">Управление</button>
+        </div>
+        <button id="closeJournal" class="close-button">×</button>
+      </div>
+      <div id="panelContent" class="panel-content"></div>
+    </aside>
+
+    <div id="toastStack" class="toast-stack"></div>
+    <div id="worldMessage" class="world-message hidden"></div>
+    <div id="interactionPrompt" class="interaction-prompt hidden"></div>
+
+    <div id="mobileControls" class="mobile-controls">
+      <div id="joystick" class="joystick"><div id="joystickKnob"></div></div>
+      <div class="mobile-buttons">
+        <button data-action="attack" class="attack">⚔<span>Удар</span></button>
+        <button data-action="dodge">➜<span>Рывок</span></button>
+        <button data-action="interact">✋<span>Взять</span></button>
+        <button data-action="trap">⌁<span>Ловушка</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="startScreen" class="modal-layer">
+    <div class="start-card glass">
+      <div class="logo-mark">◆</div>
+      <p class="eyebrow">Monster Throne — игровая демоверсия</p>
+      <h1>Путь слабого</h1>
+      <p class="lead">Ты очнулся на краю огромного острова, где даже насекомые сильнее тебя. Наблюдай, прячься, ставь ловушки, добывай мясо и постепенно перестраивай своё тело.</p>
+      <div class="artifact-info">
+        <strong>Якорь вечной души</strong>
+        <span>Неразрушимый артефакт навсегда связан с героем. Целостность души всегда остаётся 100%, поэтому окончательная смерть невозможна.</span>
+      </div>
+      <div class="start-actions">
+        <button id="continueButton" class="primary hidden">Продолжить</button>
+        <button id="newGameButton" class="primary">Начать новую жизнь</button>
+      </div>
+      <div class="start-notes">
+        <span>ПК: WASD, мышь, Shift, E, Q</span>
+        <span>Телефон: левый джойстик и кнопки справа</span>
+        <span>Игра автоматически сохраняется в браузере</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="pauseScreen" class="modal-layer hidden">
+    <div class="pause-card glass">
+      <p class="eyebrow">Тактическая пауза</p>
+      <h2>Мир остановлен</h2>
+      <p>Можно осмотреться, открыть журнал или нажать на землю, чтобы задать точку движения после снятия паузы.</p>
+      <div class="pause-actions">
+        <button id="resumeButton" class="primary">Продолжить</button>
+        <button id="saveButton">Сохранить</button>
+        <button id="restartButton">Новый мир</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deathScreen" class="modal-layer hidden">
+    <div class="death-card glass">
+      <div class="artifact-pulse">◆</div>
+      <p class="eyebrow">Якорь вечной души сработал</p>
+      <h2>Тело погибло, душа цела</h2>
+      <p id="deathReason"></p>
+      <p class="death-note">Постоянное развитие, навыки и предметы сохранены. Временная сила рассеялась.</p>
+      <div id="respawnTimer" class="respawn-timer">Возвращение через 3</div>
+    </div>
+  </div>
+  <script src="./demo.payload1.js"></script>
+  <script src="./demo.payload2.js"></script>
+  <script src="./demo.payload3.js"></script>
+  <script src="./demo.payload4.js"></script>
+  <script src="./demo.payload5.js"></script>
+  <script src="./demo.payload6.js"></script>
+  <script src="./demo.payload7.js"></script>
+  <script src="./boot.js"></script>
+</body>
+</html>
