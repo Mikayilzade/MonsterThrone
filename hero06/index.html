@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#07151b" />
+  <title>Monster Throne v0.6 — Исследователь и выживальщик</title>
+</head>
+<body>
+  <canvas id="game" aria-label="Monster Throne game world"></canvas>
+
+  <div id="hud" class="hidden">
+    <header class="topbar glass">
+      <div class="identity">
+        <div><strong>Странник</strong> <span id="levelText">ур. 1</span></div>
+        <small>◆ Якорь вечной души · душа 100%</small>
+      </div>
+      <div class="bars">
+        <div class="barrow"><span>Жизнь</span><div class="bar"><i id="hpBar"></i></div><b id="hpText"></b></div>
+        <div class="barrow"><span>Выносливость</span><div class="bar stamina"><i id="staminaBar"></i></div><b id="staminaText"></b></div>
+        <div class="barrow"><span>Голод</span><div class="bar hunger"><i id="hungerBar"></i></div><b id="hungerText"></b></div>
+      </div>
+      <nav class="topbuttons">
+        <button data-panel="inventory" title="Инвентарь (I)">🎒</button>
+        <button data-panel="craft" title="Крафт (C)">🛠</button>
+        <button data-panel="book" title="Книга мира (J)">📖</button>
+        <button id="pauseBtn" title="Пауза (P)">Ⅱ</button>
+      </nav>
+    </header>
+
+    <section id="quest" class="quest glass">
+      <small>ТЕКУЩАЯ МЫСЛЬ</small>
+      <strong id="questTitle">Осмотреться</strong>
+      <span id="questText">Мир явно сильнее тебя. Сначала изучи то, что растёт рядом.</span>
+    </section>
+
+    <section id="targetPanel" class="target glass hidden">
+      <div class="targetline"><strong id="targetName">Неизвестное существо</strong><span id="targetThreat" class="threat">?</span></div>
+      <div class="targethp"><i id="targetHp"></i></div>
+      <div id="targetHpText" class="targethptext">состояние неизвестно</div>
+      <div id="targetInfo" class="targetinfo"></div>
+    </section>
+
+    <section id="combatLog" class="combatlog glass hidden"></section>
+    <div id="prompt" class="prompt hidden"></div>
+    <div id="toasts" class="toasts"></div>
+
+    <section id="hotbar" class="hotbar glass" aria-label="Панель быстрого доступа"></section>
+
+    <div class="mobile-controls" id="mobileControls">
+      <div id="joystick" class="joystick"><div id="stick"></div></div>
+      <div class="mobile-actions">
+        <button data-mobile-action="attack">⚔<span>Удар</span></button>
+        <button data-mobile-action="dodge">➜<span>Рывок</span></button>
+        <button data-mobile-action="pickup">🎒<span>Подобрать</span></button>
+        <button data-mobile-action="use">✋<span>Использовать</span></button>
+      </div>
+    </div>
+  </div>
+
+  <aside id="panel" class="panel glass hidden">
+    <div class="panelhead">
+      <div>
+        <small id="panelEyebrow">СУМКА</small>
+        <h2 id="panelTitle">Инвентарь</h2>
+      </div>
+      <button id="panelClose">×</button>
+    </div>
+    <div id="panelBody" class="panelbody"></div>
+  </aside>
+
+  <div id="startScreen" class="modal-layer">
+    <div class="startcard glass">
+      <div class="logo">◆</div>
+      <small>MONSTER THRONE v0.6</small>
+      <h1>Исследователь и выживальщик</h1>
+      <p>Ты слабее почти всего вокруг. Здесь важнее не уровень в меню, а то, что ты успел заметить, проверить и записать.</p>
+      <div class="artifact">Якорь вечной души делает окончательную смерть невозможной. Мир не обязан быть добрее.</div>
+      <div class="startactions">
+        <button id="continueBtn" class="primary hidden">Продолжить</button>
+        <button id="newBtn" class="primary">Новая игра</button>
+      </div>
+      <small class="controls-note">ПК: WASD · мышь/Space удар · E подобрать · F использовать рядом · I инвентарь · C крафт · J книга · P пауза</small>
+    </div>
+  </div>
+
+  <div id="pauseScreen" class="modal-layer hidden">
+    <div class="pausecard glass">
+      <small>ТАКТИЧЕСКАЯ ПАУЗА</small>
+      <h2>Мир остановлен</h2>
+      <p>Можно спокойно открыть сумку, книгу или крафт и решить, что делать дальше.</p>
+      <div class="startactions">
+        <button id="resumeBtn" class="primary">Продолжить</button>
+        <button id="saveBtn">Сохранить</button>
+        <button id="newFromPauseBtn">Новая игра</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deathScreen" class="modal-layer hidden">
+    <div class="deathcard glass">
+      <div class="logo pulse">◆</div>
+      <small>ЯКОРЬ ВЕЧНОЙ ДУШИ</small>
+      <h2>Тело погибло. Душа цела.</h2>
+      <p id="deathText"></p>
+      <p>Сумка, знания и постоянное развитие сохранятся. Временное усиление исчезнет.</p>
+      <b id="respawnText">Возвращение через 3…</b>
+    </div>
+  </div>
+
+  <script src="./bundle.payload1.js"></script>
+  <script src="./bundle.payload2.js"></script>
+  <script src="./bundle.payload3.js"></script>
+  <script src="./bundle.payload4.js"></script>
+  <script src="./bundle.payload5.js"></script>
+  <script src="./bundle.payload6.js"></script>
+  <script src="./boot.js"></script>
+</body>
+</html>
