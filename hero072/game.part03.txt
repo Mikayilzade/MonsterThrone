@@ -1,0 +1,85 @@
+).textContent='Книга мира';}
+}
+function renderCharacter(body){
+  ensureHeroFields();
+  body.innerHTML=`<div class="tabs"><button class="active" data-char-tab="stats">Характеристики</button><button data-char-tab="progress">Развитие</button><button data-char-tab="skills">Навыки</button></div><div id="charInner"></div>`;
+  const inner=body.querySelector('#charInner');
+  const renderStats=()=>{
+    inner.innerHTML=`<div class="attribute-grid">${Object.entries(STAT_META).map(([id,m])=>`
+      <div class="attribute"><div><small>${m.short}</small><b>${m.name}</b><span>${m.desc}</span></div><div class="attribute-values"><b>${hero.stats[id].toFixed(1)}</b><small>+${hero.statLatent[id].toFixed(2)} скрыто</small></div></div>`).join('')}</div>
+    <div class="sectiontitle">Производные параметры</div>
+    <div class="statgrid">
+      <div><small>Жизнь</small><b>${fmt(hero.hp)} / ${fmt(hero.maxHp)}</b><span class="formula">68 + ВЫН×3,2</span></div>
+      <div><small>Запас сил</small><b>${fmt(hero.stamina)} / ${fmt(hero.maxStamina)}</b><span class="formula">58 + ВЫН×1,8 + ЛОВ×1,2</span></div>
+      <div><small>Основа удара</small><b>${hero.attack.toFixed(1)}${hero.tempPower?` + ${fmt(hero.tempPower)} врем.`:''}</b><span class="formula">3 + СИЛ×0,65 + ЛОВ×0,18</span></div>
+      <div><small>Физическая защита</small><b>${hero.defense.toFixed(1)}</b><span class="formula">ВЫН×0,12</span></div>
+      <div><small>Скорость</small><b>${fmt(hero.move)}</b><span class="formula">85 + ЛОВ×2,4</span></div>
+      <div><small>Переносимый вес</small><b>${hero.carry.toFixed(1)} усл.</b><span class="formula">12 + СИЛ×1,8</span></div>
+    </div>
+    <div class="bookentry"><b>Уровень не создаёт характеристики</b><div>Тело, питание, добыча и практика создают потенциал. Уровень лишь постепенно осваивает уже доступную мощь.</div></div>`;
+  };
+  const renderProgress=()=>{
+    const ceiling=Math.max(hero.ceiling,hero.level),canGrow=hero.level<ceiling;
+    const speed=growthSpeed(),sec=canGrow?Math.max(0,(1-(hero.levelProgress||0))*60/speed):0;
+    inner.innerHTML=`<div class="statgrid">
+      <div><small>Текущий уровень</small><b>${hero.level}</b></div><div><small>Поддерживаемый потолок</small><b>${ceiling}</b></div>
+      <div><small>Скрытый потенциал статов</small><b>${totalLatent().toFixed(2)}</b></div><div><small>Созревание следующего</small><b>${Math.round((hero.levelProgress||0)*100)}%</b></div>
+      <div><small>Скорость созревания</small><b>×${speed.toFixed(2)}</b></div><div><small>Душа</small><b>100% · неразрушима</b></div>
+    </div>
+    <div class="bookentry"><b>${canGrow?'Рост уровня идёт':'Уровень достиг потолка'}</b><div>${canGrow?`Следующий уровень примерно через ${formatTime(sec)}.`:'Нужно накопить новый постоянный потенциал через питание, добычу, практику и будущие мутации.'}</div></div>
+    <div class="bookentry"><b>Усвоение тела</b><div>${totalLatent()>0?`Организм постепенно превращает скрытый потенциал в выраженные характеристики. При критическом голоде усвоение останавливается.`:'Неусвоенного потенциала сейчас нет.'}</div></div>
+    <div class="bookentry"><b>Импульс сильной победы</b><div>${hero.growthImpulse?`Цель ур. ${hero.growthImpulse.target}; текущий бонус к скорости — +${Math.round((growthSpeed()-1)*100)}%.`:'Активного импульса нет.'}</div></div>`;
+  };
+  const renderSkills=()=>{
+    const spear=hero.skills.spear,current=combatProfile(target&&!target?.dead?target:null),nextAt=RULES.nextSkillThreshold(spear.mastery),next=combatProfile(target&&!target?.dead?target:null,nextAt);
+    const otherSkill=(id)=>{const sk=hero.skills[id],read=Math.round(sk.readiness);let effect='';
+      if(id==='survival')effect=`еда и лечение +${Math.round((skillFactor(id,.005,.001)-1)*100)}%; голод расходуется медленнее`;
+      if(id==='trapping')effect=`урон и удержание ловушек +${Math.round((skillFactor(id,.004,.0007)-1)*100)}%`;
+      if(id==='butchery')effect=`усвоение добычи +${Math.round((butcheryFactor()-1)*100)}%${hero.inv.bone_knife?' · костяной нож даёт ещё +12%':''}`;
+      if(id==='crafting')effect=`качество изделий +${Math.round((skillFactor(id,.003,.0005)-1)*100)}%`;
+      if(id==='research')effect=`точнее наблюдения и полезнее записи неудачных опытов`;
+      return `<div class="skillrow"><div><b>${SKILL_META[id].name}</b><small>${SKILL_META[id].desc}</small><small class="skill-effect">${effect}</small></div><div class="skillnumbers"><b>${sk.mastery.toFixed(1)}</b><small>готовность ${read}% · действий ${sk.uses}</small></div></div>`;
+    };
+    inner.innerHTML=`<p class="skillnote">Число мастерства — опыт, а не урон. Фактический эффект считается вместе с оружием, характеристиками и готовностью.</p>
+      <div class="combat-breakdown"><div class="combat-title">${ITEMS[equippedWeaponId()].icon}<div><b>${ITEMS[equippedWeaponId()].name}</b><small>мастерство ${spear.mastery.toFixed(1)} · готовность ${Math.round(spear.readiness)}%</small></div></div>
+      <div class="damage-result"><b>${current.minDamage}–${current.maxDamage}</b><span>обычный урон${target&&!target.dead?' по выбранной цели':' до брони цели'}</span></div>
+      <div class="formula-list"><span>тело ${current.bodyBase.toFixed(1)}</span><span>оружие ${current.weaponBase.toFixed(1)}</span><span>Сила +${current.strengthContribution.toFixed(1)}</span><span>Ловкость +${current.agilityContribution.toFixed(1)}</span><span>мастерство +${Math.round(current.masteryBonus*100)}%</span><span>готовность ×${current.readinessMultiplier.toFixed(2)}</span><span>точность ${Math.round(current.accuracy*100)}%</span><span>удар раз в ${current.attackInterval.toFixed(2)} с</span><span>выносливость −${current.staminaCost.toFixed(1)}</span></div>
+      <div class="next-threshold">При мастерстве ${nextAt}: урон ${next.minDamage}–${next.maxDamage}, интервал ${next.attackInterval.toFixed(2)} с, точность ${Math.round(next.accuracy*100)}%.</div></div>`+
+      ['survival','trapping','butchery','crafting','research'].map(otherSkill).join('');
+  };
+  body.querySelectorAll('[data-char-tab]').forEach(b=>b.onclick=()=>{
+    body.querySelectorAll('[data-char-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+    if(b.dataset.charTab==='stats')renderStats();else if(b.dataset.charTab==='progress')renderProgress();else renderSkills();
+  });
+  renderStats();
+}
+function renderInventory(body){
+  let html='<div class="sectiontitle">Содержимое сумки</div>';const entries=Object.entries(hero.inv);if(!entries.length)html+='<div class="empty">Сумка пуста.</div>';
+  for(const [id,n] of entries){const it=ITEMS[id];if(!it)continue;let stats='';
+    if(it.type==='weapon'){const w=RULES.WEAPONS[it.weapon],q=hero.weaponQuality?.[id]||1;stats=`<div class="item-stats"><span>оружие</span><span>база ${(w.baseDamage*q).toFixed(1)}</span><span>дальность ${w.range}</span><span>темп ${w.interval.toFixed(2)} с</span><span>${w.durability?`прочность ${w.durability}`:'неразрушаемо'}</span></div>`;}
+    else stats=`<small class="item-type">${({material:'материал',component:'деталь',tool:'инструмент',food:'еда'})[it.type]||it.type}</small>`;
+    const equipped=it.type==='weapon'&&equippedWeaponId()===id;
+    html+=`<div class="itemrow"><div class="icon">${it.icon}</div><div><b>${it.name} ×${n}${equipped?' · экипировано':''}</b><small>${it.desc}</small>${stats}</div><div class="itemactions">${it.type==='weapon'?`<button data-equip="${id}" ${equipped?'disabled':''}>${equipped?'В руках':'Экипировать'}</button>`:''}${it.type==='food'||['simple_trap','poison_paste','repellent','bandage'].includes(id)?`<button data-use="${id}">Использовать</button>`:''}<button data-hot="${id}">В быстрый слот</button></div></div>`;
+  }
+  body.innerHTML=html;body.querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>useItem(b.dataset.use));body.querySelectorAll('[data-hot]').forEach(b=>b.onclick=()=>assignHotbar(b.dataset.hot));body.querySelectorAll('[data-equip]').forEach(b=>b.onclick=()=>equipWeapon(b.dataset.equip));
+}
+function assignHotbar(id){let idx=hero.hotbar.findIndex(x=>!x);if(idx<0)idx=hero.selected;hero.hotbar[idx]=id;hero.selected=idx;toast(`${ITEMS[id].name} назначено в слот ${idx+1}`);renderHotbar();}
+function renderCraft(body){
+  const camp=dist(hero,world.camp)<125;
+  body.innerHTML=`<div class="tabs"><button class="active" data-craft-tab="recipes">Рецепты</button><button data-craft-tab="experiment">Свободный эксперимент</button></div><div id="craftInner"></div>`;
+  const inner=body.querySelector('#craftInner');
+  const renderRecipes=()=>{
+    const labels={components:'Детали и материалы',equipment:'Оружие и инструменты',tools:'Снаряжение',food:'Готовка'};
+    inner.innerHTML=`<div class="craft-explain"><b>Рецепт создаёт известную вещь.</b><span>Здесь заранее виден результат и точная стоимость. Эксперимент находится на соседней вкладке и может испортить материалы.</span></div><div class="sectiontitle">${camp?'Ты у костра':'Ты далеко от лагеря'}</div>`+
+    Object.entries(labels).map(([group,label])=>`<div class="recipe-group"><h3>${label}</h3>${RECIPES.filter(r=>r.group===group).map(r=>{
+      const max=r.unique&&hero.inv[r.id]?0:maxCraftable(r),stationOk=canCraftAt(r),usable=stationOk&&max>0,rangeMax=Math.max(1,max);
+      return `<div class="recipe ${usable?'':'locked'}"><div class="icon">${r.icon}</div><div><b>${r.name}</b><small>${r.text}</small><div class="requirements">${Object.entries(r.needs).map(([id,n])=>`<span class="${(hero.inv[id]||0)>=n?'good':'danger'}">${ITEMS[id].name} ${hero.inv[id]||0}/${n}</span>`).join('')}</div>${!stationOk?'<small class="danger">Нужен костёр в лагере.</small>':''}${r.unique&&hero.inv[r.id]?'<small class="good">Уже изготовлено.</small>':''}
+      <div class="batchline"><input data-craft-range="${r.id}" type="range" min="1" max="${rangeMax}" value="1" ${!usable||r.unique?'disabled':''}><span data-craft-count="${r.id}">${usable?1:0}</span><button data-craft-max="${r.id}" ${!usable||r.unique?'disabled':''}>Макс (${max})</button></div></div><div class="recipe-buttons"><button data-recipe="${r.id}" ${!usable?'disabled':''}>Создать ×${usable?1:0}</button></div></div>`;
+    }).join('')}</div>`).join('');
+    inner.querySelectorAll('[data-craft-range]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.craftRange,val=inp.value,label=inner.querySelector(`[data-craft-count="${id}"]`),btn=inner.querySelector(`[data-recipe="${id}"]`);if(label)label.textContent=val;if(btn)btn.textContent=`Создать ×${val}`;});
+    inner.querySelectorAll('[data-craft-max]').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.craftMax,inp=inner.querySelector(`[data-craft-range="${id}"]`),r=RECIPES.find(x=>x.id===id),max=maxCraftable(r);if(inp){inp.value=Math.max(1,max);inp.dispatchEvent(new Event('input'));}});
+    inner.querySelectorAll('[data-recipe]').forEach(btn=>btn.onclick=()=>{const r=RECIPES.find(x=>x.id===btn.dataset.recipe),inp=inner.querySelector(`[data-craft-range="${r.id}"]`);craftRecipe(r,inp?Number(inp.value):1);});
+  };
+  const renderExperiment=()=>{
+    const mats=Object.keys(hero.inv).filter(id=>!ITEMS[id]?.weapon&&(hero.inv[id]||0)>0),opts=mats.map(id=>`<option value="${id}">${ITEMS[id].name} ×${hero.inv[id]}</option>`).join('');
+    inner.innerHTML=`<div class="experiment"><b>Свободный эксперимент</b><p>Это исследование свойств, а не изготовление обещанного предмета. Два выбранных материала будут потрачены даже при неудаче.</p><div class="experiment-warning">⚠ Материалы могут быть полностью испорчены.</div><label>Материал 1<select id="expA">${opts}</select></label><label>Материал 2<select id="expB">${opts}</select></label><label>Способ<select id="expMethod">${Object.entries(EXPERIMENT_METHODS).map(([id,name])=>`<option value="${id}">${name}</option>`).join('')}</select></label><button id="expGo" class="primary" ${mats.length<2?'disabled':''}>Провести опыт</button></div><div class="sectiontitle">Подтверждённые реакции</div>${hero.knowledge.reactions.length?hero.knowledge.reactions.map(x=>`<div class="bookentry"><b>${x}</b></div>`).join(''):'<div class="empty">
