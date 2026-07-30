@@ -59,3 +59,7 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .combatlog{pointer-events:auto;max-height:170px}.combatlog details{cursor:pointer}.combatlog summary{list-style:none}.combatlog details small{display:block;margin-top:5px;color:#95aea8;line-height:1.35}.combatlog details[open]{padding:5px 0}
 .recipe .item-svg{width:31px;height:31px}.slot .item-svg{width:25px;height:25px}.combat-title .item-svg{width:38px;height:38px}
 @media(max-width:620px){.damage-result{align-items:flex-start;flex-direction:column;gap:0}.formula-list span{font-size:9px}.combat-breakdown{padding:10px}.recipe{grid-template-columns:36px 1fr}.recipe .recipe-buttons{grid-column:1/3}.recipe .recipe-buttons button{width:100%}}
+/* v0.8 sector-world status: compact on desktop and clear of touch controls. */
+.world-status{position:fixed;left:16px;bottom:106px;z-index:5;display:flex;flex-direction:column;gap:2px;padding:8px 11px;pointer-events:none}
+.world-status strong{font-size:13px;color:#d9efc3}.world-status small{font-size:10px;color:#91aaa1}
+@media(max-width:620px){.world-status{left:auto;right:10px;bottom:270px;padding:6px 8px}.world-status small{display:none}}

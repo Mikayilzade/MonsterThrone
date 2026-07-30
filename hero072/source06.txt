@@ -18,7 +18,14 @@ function drawCarcasses(c){
 function drawEnemies(c){for(const e of world.enemies){if(e.dead)continue;const d=ENEMY_TYPES[e.type],x=e.x-c.x,y=e.y-c.y;if(x<-60||y<-60||x>W+60||y>H+60)continue;ctx.save();ctx.translate(x,y);ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(2,d.radius*.65,d.radius*1.1,d.radius*.38,0,0,TAU);ctx.fill();ctx.fillStyle=d.color;ctx.beginPath();ctx.arc(0,0,d.radius,0,TAU);ctx.fill();ctx.fillStyle='rgba(255,255,255,.16)';ctx.beginPath();ctx.arc(-d.radius*.25,-d.radius*.3,d.radius*.3,0,TAU);ctx.fill();if(e.type==='boar'){ctx.strokeStyle='#ded1a2';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-d.radius,-2);ctx.lineTo(-d.radius-8,6);ctx.moveTo(d.radius,-2);ctx.lineTo(d.radius+8,6);ctx.stroke();}if(e.type==='wolf'){ctx.fillStyle='#b7c2d2';ctx.beginPath();ctx.moveTo(-9,-15);ctx.lineTo(-4,-29);ctx.lineTo(2,-14);ctx.moveTo(9,-15);ctx.lineTo(4,-29);ctx.lineTo(-2,-14);ctx.fill();}ctx.restore();if(target===e){ctx.strokeStyle='#f2d772';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,d.radius+7,0,TAU);ctx.stroke();ctx.fillStyle='rgba(14,26,28,.8)';ctx.fillRect(x-25,y-d.radius-18,50,5);ctx.fillStyle='#e46c65';ctx.fillRect(x-25,y-d.radius-18,50*(e.hp/e.maxHp),5);}}
 }
 function drawHero(c){const x=hero.x-c.x,y=hero.y-c.y;ctx.save();ctx.translate(x,y);ctx.fillStyle='rgba(60,225,200,.16)';ctx.beginPath();ctx.arc(0,0,22,0,TAU);ctx.fill();ctx.fillStyle='#d9eee8';ctx.beginPath();ctx.arc(0,-4,9,0,TAU);ctx.fill();ctx.fillStyle='#3c756a';ctx.fillRect(-7,4,14,18);ctx.strokeStyle='#c7b37b';ctx.lineWidth=3;const a=target&&!target.dead?Math.atan2(target.y-hero.y,target.x-hero.x):Math.atan2(mouse.worldY-hero.y,mouse.worldX-hero.x);ctx.beginPath();ctx.moveTo(Math.cos(a)*5,Math.sin(a)*5);ctx.lineTo(Math.cos(a)*29,Math.sin(a)*29);ctx.stroke();ctx.restore();}
-function drawMinimap(){const mobile=W<620;const r=mobile?48:72,x=W-r-16,y=mobile?H-210:H-r-16;ctx.save();ctx.globalAlpha=.9;ctx.fillStyle='rgba(4,18,22,.86)';ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();ctx.strokeStyle='rgba(170,220,210,.35)';ctx.stroke();const s=r/world.radius;for(const e of world.enemies){const dx=(e.x-world.cx)*s,dy=(e.y-world.cy)*s;if(dx*dx+dy*dy<r*r){ctx.fillStyle=threatFor(e)[1];ctx.fillRect(x+dx-1,y+dy-1,3,3);}}ctx.fillStyle='#78e2c0';ctx.beginPath();ctx.arc(x+(hero.x-world.cx)*s,y+(hero.y-world.cy)*s,4,0,TAU);ctx.fill();ctx.fillStyle='#f2b968';ctx.beginPath();ctx.arc(x+(world.camp.x-world.cx)*s,y+(world.camp.y-world.cy)*s,3,0,TAU);ctx.fill();ctx.restore();}
+function drawMinimap(){
+  const mobile=W<620,r=mobile?48:72,x=W-r-16,y=mobile?H-210:H-r-16,s=r/world.radius;
+  ctx.save();ctx.globalAlpha=.94;ctx.fillStyle='rgba(2,10,14,.94)';ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();ctx.save();ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.clip();
+  const cell=Math.max(1,sectorConfig.sectorSize*s);
+  for(const id of sectorManager.visited){const [sx,sy]=id.split(',').map(Number),wx=sx*sectorConfig.sectorSize,wy=sy*sectorConfig.sectorSize,b=terrainAt(wx+sectorConfig.sectorSize/2,wy+sectorConfig.sectorSize/2);ctx.fillStyle=terrainColor[b]||terrainColor.water;ctx.fillRect(x+(wx-world.cx)*s,y+(wy-world.cy)*s,cell+1,cell+1);}
+  ctx.restore();ctx.strokeStyle='rgba(170,220,210,.4)';ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.stroke();ctx.fillStyle='#78e2c0';ctx.beginPath();ctx.arc(x+(hero.x-world.cx)*s,y+(hero.y-world.cy)*s,4,0,TAU);ctx.fill();
+  if(sectorManager.visited.has(`${Math.floor(world.camp.x/sectorConfig.sectorSize)},${Math.floor(world.camp.y/sectorConfig.sectorSize)}`)){ctx.fillStyle='#f2b968';ctx.beginPath();ctx.arc(x+(world.camp.x-world.cx)*s,y+(world.camp.y-world.cy)*s,3,0,TAU);ctx.fill();}ctx.restore();
+}
 
 function loop(now){const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;update(dt);draw();if(!$('hud').classList.contains('hidden'))requestAnimationFrame(loop);}
 
@@ -30,7 +37,7 @@ document.querySelectorAll('[data-mobile-action]').forEach(b=>b.onclick=()=>({att
 
 // Debug surface used by local tests.
 function debugStep(dt){const was=world.paused;world.paused=false;update(dt);world.paused=was;}
-const debugApi={ITEMS,PLANT_TRUTH,RECIPES,HIDDEN_REACTIONS,EXPERIMENT_METHODS,hero,world,terrainAt,resetHeroNew,saveGame,loadGame,craftRecipe,experiment,addInv,removeInv,debugStep,draw,skillFactor,supportedCeiling,addStatPotential,recomputeDerived,growthSpeed,combatProfile,equipWeapon,hitFormulaText,butcheryFactor,RULES};window.MonsterThroneV07=debugApi;window.MonsterThroneV06=debugApi;
+const debugApi={SECTORS,sectorManager,ITEMS,PLANT_TRUTH,RECIPES,HIDDEN_REACTIONS,EXPERIMENT_METHODS,hero,world,terrainAt,resetHeroNew,saveGame,loadGame,craftRecipe,experiment,addInv,removeInv,debugStep,draw,skillFactor,supportedCeiling,addStatPotential,recomputeDerived,growthSpeed,combatProfile,equipWeapon,hitFormulaText,butcheryFactor,RULES};window.MonsterThroneV08=debugApi;window.MonsterThroneV07=debugApi;window.MonsterThroneV06=debugApi;
 
 renderHotbar();
 })();

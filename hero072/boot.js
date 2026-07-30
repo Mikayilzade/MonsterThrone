@@ -5,7 +5,9 @@
     if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`);
     return r.text();
   }))).then(parts => {
-    const source = parts.join('');
+    // Source chunks intentionally split some tokens; trim only their outer
+    // line breaks so a static server and every browser rebuild the exact file.
+    const source = parts.map(part => part.trim()).join('');
     Function(`${source}\n//# sourceURL=hero072/game.js`)();
   }).catch(error => {
     console.error(error);

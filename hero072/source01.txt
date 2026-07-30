@@ -92,8 +92,10 @@ const canvas=$('game'), ctx=canvas.getContext('2d');
 let DPR=1, W=0,H=0;
 function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;canvas.width=W*DPR;canvas.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);} addEventListener('resize',resize);resize();
 
-const world={size:5200,cx:2600,cy:2600,radius:2440,camp:{x:520,y:2650},time:0,day:1,paused:false,objects:[],enemies:[],carcasses:[],damage:[]};
-const hero={x:560,y:2650,radius:12,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
+const SECTORS=window.MonsterThroneSectorWorld;
+const sectorManager=new SECTORS.SectorManager({seed:'monster-throne-main-v08'}),sectorConfig=sectorManager.config;
+const world={size:sectorConfig.size,cx:sectorConfig.cx,cy:sectorConfig.cy,radius:sectorConfig.radius,camp:sectorConfig.camp,time:0,day:1,paused:false,objects:[],enemies:[],carcasses:[],damage:[],seed:sectorConfig.seed};
+const hero={x:world.camp.x+40,y:world.camp.y,radius:12,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
   stats:{strength:10,endurance:10,agility:10,intelligence:10},
   statLatent:{strength:0,endurance:0,agility:0,intelligence:0},
   attack:11,defense:1,move:109,carry:30,tempPower:0,tempPowerTime:0,growthImpulse:null,
