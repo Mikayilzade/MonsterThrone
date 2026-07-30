@@ -1,0 +1,80 @@
+мясо · ${fr.label}, ${formatTime(fr.remaining)}`;
+  }
+  return '';
+}
+
+function craftRecipe(r,qty=1){
+  if(!canCraftAt(r))return toast('Для этого нужен костёр в лагере.','bad');
+  if(r.unique&&(hero.inv[r.id]||0)>0)return toast('Этот предмет уже изготовлен.','bad');
+  const max=maxCraftable(r);qty=Math.max(1,Math.min(max,Math.floor(Number(qty)||1)));if(r.unique)qty=1;
+  if(max<=0)return toast(`Не хватает материалов: ${missingMaterials(r).join(' · ')}`,'bad');
+  const result=RULES.applyRecipe(hero.inv,r,qty);if(!result.ok)return toast('Не хватает материалов.','bad');hero.inv=result.inventory;
+  if(r.id==='roasted_root')addKnowledgePlant('root','cooked');
+  if(r.id==='improved_spear'){
+    hero.weaponQuality.improved_spear=clamp(1.04+(hero.skills.crafting.mastery||0)*.0015,1.04,1.22);
+    hero.equipment.weapon='improved_spear';hero.hotbar=hero.hotbar.map(id=>id==='spear'?'improved_spear':id);
+  }
+  gainSkill('crafting',0.22*Math.sqrt(qty));if(r.id==='cooked_meat'||r.id==='roasted_root')gainSkill('survival',0.12*Math.sqrt(qty));
+  toast(`Создано: ${r.name} ×${qty}`);renderHotbar();renderPanels();saveGame(true);
+}
+function experiment(a,b,method){
+  if(!a||!b||a===b)return toast('Нужно выбрать два разных материала.','bad');
+  if((hero.inv[a]||0)<1||(hero.inv[b]||0)<1)return toast('Материалов нет в сумке.','bad');
+  removeInv(a);removeInv(b);const methodName=EXPERIMENT_METHODS[method]||method;
+  const rx=HIDDEN_REACTIONS.find(r=>((r.a===a&&r.b===b)||(r.a===b&&r.b===a))&&r.method===method);
+  if(rx){
+    addInv(rx.out,1);if(!hero.knowledge.reactions.includes(rx.label))hero.knowledge.reactions.push(rx.label);
+    rx.facts.forEach(([id,f])=>addKnowledgePlant(id,f));gainSkill('research',0.9);toast(`✨ Открыта реакция: ${rx.label}`);
+  }else{
+    gainSkill('research',0.18);const m=hero.skills.research.mastery;
+    const observation=m>=18?'Вещества заметно изменились, но выбранный способ не завершил полезную реакцию.':m>=7?'Один материал изменил запах или структуру другого, но практического результата нет.':'Подтверждённого полезного эффекта не обнаружено.';
+    const note=`${ITEMS[a].name} + ${ITEMS[b].name}; ${methodName.toLowerCase()}: ${observation}`;
+    if(!hero.knowledge.experimentNotes.includes(note))hero.knowledge.experimentNotes.unshift(note);hero.knowledge.experimentNotes=hero.knowledge.experimentNotes.slice(0,40);
+    toast(`Материалы испорчены. ${observation}`,'bad');
+  }
+  renderPanels();saveGame(true);
+}
+
+function togglePanel(type){if(panelType===type&&!$('panel').classList.contains('hidden')){closePanel();return;}panelType=type;$('panel').classList.remove('hidden');renderPanels();}
+function closePanel(){$('panel').classList.add('hidden');panelType=null;}
+$('panelClose').onclick=closePanel;document.querySelectorAll('[data-panel]').forEach(b=>b.onclick=()=>togglePanel(b.dataset.panel));
+function renderPanels(){
+  if(!panelType)return;const body=$('panelBody');
+  if(panelType==='character'){renderCharacter(body);$('panelEyebrow').textContent='ПЕРСОНАЖ';$('panelTitle').textContent='Статы, прогресс и навыки';}
+  else if(panelType==='inventory'){renderInventory(body);$('panelEyebrow').textContent='СУМКА';$('panelTitle').textContent='Инвентарь';}
+  else if(panelType==='craft'){renderCraft(body);$('panelEyebrow').textContent='МАСТЕРСКАЯ';$('panelTitle').textContent='Крафт, готовка и эксперименты';}
+  else{renderBook(body);$('panelEyebrow').textContent='ЗАПИСИ ГЕРОЯ';$('panelTitle').textContent='Книга мира';}
+}
+function renderCharacter(body){
+  ensureHeroFields();
+  body.innerHTML=`<div class="tabs"><button class="active" data-char-tab="stats">Характеристики</button><button data-char-tab="progress">Развитие</button><button data-char-tab="skills">Навыки</button></div><div id="charInner"></div>`;
+  const inner=body.querySelector('#charInner');
+  const renderStats=()=>{
+    inner.innerHTML=`<div class="attribute-grid">${Object.entries(STAT_META).map(([id,m])=>`
+      <div class="attribute"><div><small>${m.short}</small><b>${m.name}</b><span>${m.desc}</span></div><div class="attribute-values"><b>${hero.stats[id].toFixed(1)}</b><small>+${hero.statLatent[id].toFixed(2)} скрыто</small></div></div>`).join('')}</div>
+    <div class="sectiontitle">Производные параметры</div>
+    <div class="statgrid">
+      <div><small>Жизнь</small><b>${fmt(hero.hp)} / ${fmt(hero.maxHp)}</b><span class="formula">68 + ВЫН×3,2</span></div>
+      <div><small>Запас сил</small><b>${fmt(hero.stamina)} / ${fmt(hero.maxStamina)}</b><span class="formula">58 + ВЫН×1,8 + ЛОВ×1,2</span></div>
+      <div><small>Основа удара</small><b>${hero.attack.toFixed(1)}${hero.tempPower?` + ${fmt(hero.tempPower)} врем.`:''}</b><span class="formula">3 + СИЛ×0,65 + ЛОВ×0,18</span></div>
+      <div><small>Физическая защита</small><b>${hero.defense.toFixed(1)}</b><span class="formula">ВЫН×0,12</span></div>
+      <div><small>Скорость</small><b>${fmt(hero.move)}</b><span class="formula">85 + ЛОВ×2,4</span></div>
+      <div><small>Переносимый вес</small><b>${hero.carry.toFixed(1)} усл.</b><span class="formula">12 + СИЛ×1,8</span></div>
+    </div>
+    <div class="bookentry"><b>Уровень не создаёт характеристики</b><div>Тело, питание, добыча и практика создают потенциал. Уровень лишь постепенно осваивает уже доступную мощь.</div></div>`;
+  };
+  const renderProgress=()=>{
+    const ceiling=Math.max(hero.ceiling,hero.level),canGrow=hero.level<ceiling;
+    const speed=growthSpeed(),sec=canGrow?Math.max(0,(1-(hero.levelProgress||0))*60/speed):0;
+    inner.innerHTML=`<div class="statgrid">
+      <div><small>Текущий уровень</small><b>${hero.level}</b></div><div><small>Поддерживаемый потолок</small><b>${ceiling}</b></div>
+      <div><small>Скрытый потенциал статов</small><b>${totalLatent().toFixed(2)}</b></div><div><small>Созревание следующего</small><b>${Math.round((hero.levelProgress||0)*100)}%</b></div>
+      <div><small>Скорость созревания</small><b>×${speed.toFixed(2)}</b></div><div><small>Душа</small><b>100% · неразрушима</b></div>
+    </div>
+    <div class="bookentry"><b>${canGrow?'Рост уровня идёт':'Уровень достиг потолка'}</b><div>${canGrow?`Следующий уровень примерно через ${formatTime(sec)}.`:'Нужно накопить новый постоянный потенциал через питание, добычу, практику и будущие мутации.'}</div></div>
+    <div class="bookentry"><b>Усвоение тела</b><div>${totalLatent()>0?`Организм постепенно превращает скрытый потенциал в выраженные характеристики. При критическом голоде усвоение останавливается.`:'Неусвоенного потенциала сейчас нет.'}</div></div>
+    <div class="bookentry"><b>Импульс сильной победы</b><div>${hero.growthImpulse?`Цель ур. ${hero.growthImpulse.target}; текущий бонус к скорости — +${Math.round((growthSpeed()-1)*100)}%.`:'Активного импульса нет.'}</div></div>`;
+  };
+  const renderSkills=()=>{
+    const spear=hero.skills.spear,current=combatProfile(target&&!target?.dead?target:null),nextAt=RULES.nextSkillThreshold(spear.mastery),next=combatProfile(target&&!target?.dead?target:null,nextAt);
+    const otherSkill=(id)=>{const 
