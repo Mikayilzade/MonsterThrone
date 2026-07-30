@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const files = ['source01.txt','source02.txt','source03.txt','source04.txt','source05.txt','source06.txt'];
+  const files = ['source01.txt','source02.txt','source03.txt','source04a.txt','source04b.txt','source05.txt','source06.txt'];
   Promise.all(files.map(name => fetch(`./${name}`).then(r => {
     if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`);
     return r.text();
