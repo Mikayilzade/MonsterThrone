@@ -1,0 +1,172 @@
+ught>=1)info+=`Твои наблюдения: удар примерно ${Math.round(d.attack-hero.defense)}–${Math.round(d.attack*1.15-hero.defense)} урона. `;
+  if(research>=12)info+=`Вероятный уровень: ${Math.max(1,d.level-2)}–${d.level+2}. Защита: около ${d.defense||0}. `;
+  if(k.killed>=1)info+=`После убийства тушу можно осмотреть и разделать.`;
+  $('targetInfo').textContent=info;
+}
+function roleText(r){return ({scavenger:'падальщик',grazer:'травоядное',territorial:'территориальный зверь',predator:'хищник'})[r]||r;}
+
+function inputVec(){let x=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+mobileVec.x;let y=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0)+mobileVec.y;const l=Math.hypot(x,y);return l>1?{x:x/l,y:y/l}:{x,y};}
+addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='Space'){e.preventDefault();attack();}
+  if(e.code==='KeyE')pickupNearby();
+  if(e.code==='KeyF')useNearby();
+  if(e.code==='KeyK')togglePanel('character');
+  if(e.code==='KeyI')togglePanel('inventory');
+  if(e.code==='KeyC')togglePanel('craft');
+  if(e.code==='KeyJ')togglePanel('book');
+  if(e.code==='KeyP'||e.code==='Escape')togglePause();
+  if(e.code==='ShiftLeft'||e.code==='ShiftRight')dodge();
+  if(/^Digit[1-8]$/.test(e.code)){hero.selected=+e.code.slice(-1)-1;useHotbar(hero.selected);renderHotbar();}
+});
+addEventListener('keyup',e=>keys[e.code]=false);
+canvas.addEventListener('pointermove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;const c=camera();mouse.worldX=e.clientX+c.x;mouse.worldY=e.clientY+c.y;});
+canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;const c=camera(),wx=e.clientX+c.x,wy=e.clientY+c.y;const p={x:wx,y:wy};const en=nearest(world.enemies.filter(x=>!x.dead),p,34);if(en){if(target===en)attack();else selectEnemy(en);return;}const carc=nearest(world.carcasses,p,34);if(carc){selectCarcass(carc);return;}selectedCarcass=null;mouse.down=true;attack();});
+canvas.addEventListener('pointerup',()=>mouse.down=false);
+
+function nearest(arr,p,max=Infinity){let best=null,bd=max;for(const o of arr){const d=Math.hypot(o.x-p.x,o.y-p.y);if(d<bd){bd=d;best=o;}}return best;}
+function dodge(){if(world.paused||dodgeCd>0||hero.stamina<20)return;const v=inputVec();let x=v.x,y=v.y;if(!x&&!y){const a=Math.atan2(mouse.worldY-hero.y,mouse.worldX-hero.x);x=Math.cos(a);y=Math.sin(a);}dodgeVX=x*420;dodgeVY=y*420;dodgeTime=.22;dodgeCd=1.3;hero.stamina-=20;}
+function equippedWeaponId(){
+  ensureHeroFieldsBare();
+  let id=hero.equipment?.weapon||'spear';
+  if(!hero.inv[id])id=hero.inv.improved_spear?'improved_spear':'spear';
+  hero.equipment=hero.equipment||{};hero.equipment.weapon=id;return id;
+}
+function combatProfile(enemy=null,masteryOverride=null){
+  const id=equippedWeaponId(),sk=hero.skills.spear||{mastery:0,readiness:35};
+  return RULES.combatProfile({weapon:id,strength:hero.stats.strength,agility:hero.stats.agility,mastery:masteryOverride??sk.mastery,readiness:sk.readiness,tempPower:hero.tempPower,enemyDefense:enemy?ENEMY_TYPES[enemy.type].defense||0:0,quality:hero.weaponQuality?.[id]||1});
+}
+function equipWeapon(id){
+  if(!ITEMS[id]?.weapon||!hero.inv[id])return toast('Этого оружия нет в сумке.','bad');
+  hero.equipment.weapon=id;let idx=hero.hotbar.findIndex(x=>x===id);if(idx<0){idx=hero.hotbar.findIndex(x=>ITEMS[x]?.type==='weapon');if(idx<0)idx=hero.selected;hero.hotbar[idx]=id;}hero.selected=idx;
+  toast(`Экипировано: ${ITEMS[id].name}`);renderHotbar();renderPanels();saveGame(true);
+}
+function attack(){
+  if(world.paused||hero.respawning||attackCd>0)return;
+  const wid=equippedWeaponId();if(!hero.inv[wid])return toast('Нужно оружие.','bad');
+  const profile=combatProfile(target&&!target?.dead?target:null);if(hero.stamina<profile.staminaCost)return toast(`Не хватает выносливости: нужно ${profile.staminaCost.toFixed(1)}.`,'bad');
+  hero.stamina=Math.max(0,hero.stamina-profile.staminaCost);attackCd=profile.attackInterval;
+  let aim=target&&!target.dead?target:{x:mouse.worldX,y:mouse.worldY};let candidates=world.enemies.filter(e=>!e.dead&&dist(e,hero)<profile.range);
+  if(candidates.length){let e=nearest(candidates,aim,150);if(!e)e=nearest(candidates,hero);hitEnemy(e);}else combat(`${ITEMS[wid].name} рассекло воздух.`,'out');
+}
+function hitEnemy(e){
+  const k=enemyKnowledge(e.type);k.fought++;const profile=combatProfile(e);
+  if(Math.random()>profile.accuracy){gainSkill('spear',.08);combat(`Промах по ${ENEMY_TYPES[e.type].name}. Точность ${Math.round(profile.accuracy*100)}%.`,'out');return;}
+  const dmg=irnd(profile.maxDamage+1,profile.minDamage);e.hp-=dmg;gainSkill('spear',0.22+Math.min(.35,e.level/Math.max(1,hero.level)*.02));
+  hero.lastHit={time:world.time,target:ENEMY_TYPES[e.type].name,damage:dmg,profile:{...profile}};
+  floatDamage(e.x,e.y,'-'+dmg,'out');combat(`Ты → ${ENEMY_TYPES[e.type].name}: ${dmg}`,'out',hitFormulaText(hero.lastHit));
+  target=e;selectedCarcass=null;if(e.hp<=0)killEnemy(e,'hero');renderTarget();
+}
+function hitFormulaText(last){
+  if(!last)return '';
+  const p=last.profile;
+  return `Тело ${p.bodyBase.toFixed(1)} + оружие ${p.weaponBase.toFixed(1)} + Сила ${p.strengthContribution.toFixed(1)} + Ловкость ${p.agilityContribution.toFixed(1)}${p.tempPower?` + временная сила ${p.tempPower.toFixed(1)}`:''}; мастерство +${Math.round(p.masteryBonus*100)}%; готовность ×${p.readinessMultiplier.toFixed(2)}; защита цели −${p.enemyDefense.toFixed(1)}; диапазон ${p.minDamage}–${p.maxDamage}.`;
+}
+function killEnemy(e,killer){
+  if(e.dead)return;e.dead=true;const d=ENEMY_TYPES[e.type];
+  if(killer==='hero'){
+    enemyKnowledge(e.type).killed++;
+    if(d.level>hero.level){
+      const gap=d.level-hero.level;
+      hero.growthImpulse={target:d.level,startLevel:hero.level,bonus:Math.min(3,gap*.01),expires:world.time+600};
+      toast(`Победа над ${d.name}: созревание ускорено на ${Math.round(hero.growthImpulse.bonus*100)}%.`);
+    }else toast(`Победа над ${d.name}.`);
+  }
+  const parts=carcassYield(e.type);
+  world.carcasses.push({kind:'carcass',x:e.x,y:e.y,type:e.type,age:0,parts,initialParts:parts.length,level:d.level});
+  setTimeout(()=>{const idx=world.enemies.indexOf(e);if(idx>=0)world.enemies.splice(idx,1);spawnEnemy(e.type);},2000);
+}
+function heroHit(e){if(hero.respawning||dodgeTime>0)return;const d=ENEMY_TYPES[e.type],dmg=Math.max(1,Math.round(d.attack*rnd(1.15,.85)-hero.defense));hero.hp-=dmg;floatDamage(hero.x,hero.y,'-'+dmg,'in');combat(`${d.name} → Ты: ${dmg}`,'in');if(hero.hp<=0)die(d.name);}
+function die(reason){if(hero.respawning)return;hero.respawning=true;hero.deaths++;hero.tempPower=0;hero.tempPowerTime=0;world.paused=true;$('deathText').textContent=`Тебя убил ${reason}. Это уже смерть №${hero.deaths}.`;$('deathScreen').classList.remove('hidden');let n=3;$('respawnText').textContent=`Возвращение через ${n}…`;const t=setInterval(()=>{n--;if(n>0)$('respawnText').textContent=`Возвращение через ${n}…`;else{clearInterval(t);hero.x=world.camp.x+40;hero.y=world.camp.y;hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;hero.hunger=Math.max(45,hero.hunger);hero.respawning=false;world.paused=false;$('deathScreen').classList.add('hidden');saveGame(true);}},700);}
+
+function pickupNearby(){
+  if(world.paused||hero.respawning)return;findNear();if(!nearObject)return toast('Рядом нечего подобрать.');
+  if(nearObject.kind==='plant'||nearObject.kind==='resource'){
+    addInv(nearObject.id,1);if(nearObject.kind==='plant'){addKnowledgePlant(nearObject.id,'seen');gainSkill('research',0.08);}
+    world.objects.splice(world.objects.indexOf(nearObject),1);nearObject=null;return;
+  }
+  if(nearObject.kind==='trap'){
+    const idx=world.objects.indexOf(nearObject);if(idx>=0)world.objects.splice(idx,1);
+    addInv('simple_trap',1);gainSkill('trapping',0.15);
+    toast(nearObject.poisoned?'Ловушка снята. Основа возвращена, нанесённый яд утрачен.':'Ловушка снята и возвращена в сумку.');
+    nearObject=null;return;
+  }
+  if(nearObject.kind==='carcass')harvestCarcass(nearObject);
+}
+function useNearby(){
+  if(world.paused||hero.respawning)return;findNear();if(!nearObject)return toast('Рядом нечего использовать.');
+  if(nearObject.kind==='plant'){
+    useItem(nearObject.id,true);addKnowledgePlant(nearObject.id,'raw');gainSkill('survival',0.1);
+    world.objects.splice(world.objects.indexOf(nearObject),1);nearObject=null;
+  }else if(nearObject.kind==='carcass'){eatCarcass(nearObject);}
+  else if(nearObject.kind==='trap')toast('Ловушка уже установлена. Нажми E, чтобы снять её.');
+  else toast('Это лучше сначала положить в сумку.');
+}
+function harvestCarcass(c){
+  ensureCarcass(c);
+  if(!c.parts.length)return toast('Здесь почти ничего не осталось.');
+  const id=c.parts.shift(),d=ENEMY_TYPES[c.type];
+  addInv(id,1);enemyKnowledge(c.type).harvested++;gainSkill('butchery',0.32);if(id==='raw_meat')addStatPotential(ENEMY_STAT_PROFILES[c.type],c.level*.008*butcheryFactor(),'разделка');
+  const left=c.parts.length;
+  if(id==='raw_meat')toast(`Получено: ${ITEMS[id].icon} ${ITEMS[id].name}. Туша ${d.name}: осталось ${left} частей.`);
+  else toast(`Извлечено: ${ITEMS[id].icon} ${ITEMS[id].name}. Осталось ${left} частей.`);
+  if(selectedCarcass===c)renderTarget();
+}
+function eatCarcass(c){
+  ensureCarcass(c);
+  const meatIndex=c.parts.indexOf('raw_meat');
+  if(meatIndex<0)return toast('Мяса на туше уже не осталось.');
+  c.parts.splice(meatIndex,1);
+  const fresh=carcassFreshness(c),freshFactor=c.age<300?1:.35;
+  const power=Math.max(1,Math.round(c.level*.16*freshFactor));
+  hero.tempPower=Math.max(hero.tempPower,power);hero.tempPowerTime=c.age<300?70:25;
+  hero.hunger=clamp(hero.hunger+(c.age<300?18:9),0,100);
+  addStatPotential(ENEMY_STAT_PROFILES[c.type],c.level*.018*freshFactor*butcheryFactor(),'свежее мясо');gainSkill('survival',0.16);gainSkill('butchery',0.08);
+  if(c.age>=300){hero.hp=Math.max(1,hero.hp-4);toast(`Мясо уже портится: временная сила +${power}, но желудок явно против.`,'bad');}
+  else toast(`Свежее мясо: временная сила +${power}. На туше осталось ${c.parts.length} частей.`);
+  if(selectedCarcass===c)renderTarget();
+}
+
+function useItem(id,fromWorld=false){
+  if(!fromWorld&&!removeInv(id,1))return;
+  const survival=skillFactor('survival',.005,.001);
+  const heal=n=>Math.round(n*survival),food=n=>Math.round(n*(1+(survival-1)*.65));
+  switch(id){
+    case 'root':hero.hunger=clamp(hero.hunger+food(14),0,100);hero.hp=clamp(hero.hp+heal(2),0,hero.maxHp);addKnowledgePlant('root','raw');toast(`Корень оказался съедобным. +${food(14)} сытости, +${heal(2)} HP.`);break;
+    case 'bluecap':hero.hunger=clamp(hero.hunger+3,0,100);hero.hp-=Math.max(2,Math.round(9/survival));addKnowledgePlant('bluecap','raw');toast('Гриб оказался ядовитым.','bad');break;
+    case 'bloodleaf':hero.hunger=clamp(hero.hunger+2,0,100);hero.hp-=Math.max(1,Math.round(5/survival));addKnowledgePlant('bloodleaf','raw');toast('Кроволист раздражает желудок.','bad');break;
+    case 'ghostfern':addKnowledgePlant('ghostfern','raw');toast('Жевать это было плохой идеей. Пищевой ценности почти нет.');break;
+    case 'roasted_root':hero.hunger=clamp(hero.hunger+food(28),0,100);hero.hp=clamp(hero.hp+heal(7),0,hero.maxHp);addKnowledgePlant('root','cooked');addStatPotential({endurance:.6,intelligence:.4},.12,'питание');toast(`Запечённый корень: +${food(28)} сытости, +${heal(7)} HP.`);break;
+    case 'raw_meat':hero.hunger=clamp(hero.hunger+food(20),0,100);hero.tempPower=Math.max(hero.tempPower,5);hero.tempPowerTime=45;addStatPotential({strength:.35,endurance:.35,agility:.2,intelligence:.1},.35*butcheryFactor(),'мясо');toast('Сырое мясо: временная сила +5 и немного постоянного потенциала.');break;
+    case 'cooked_meat':hero.hunger=clamp(hero.hunger+food(34),0,100);hero.hp=clamp(hero.hp+heal(6),0,hero.maxHp);hero.tempPower=Math.max(hero.tempPower,3);hero.tempPowerTime=65;addStatPotential({strength:.25,endurance:.45,agility:.15,intelligence:.15},.22,'готовая пища');toast('Жареное мясо насыщает и слегка усиливает.');break;
+    case 'healing_brew':hero.hp=clamp(hero.hp+heal(38),0,hero.maxHp);toast(`Зелёный отвар восстанавливает ${heal(38)} HP.`);break;
+    case 'bandage':hero.hp=clamp(hero.hp+heal(18),0,hero.maxHp);addKnowledgePlant('bloodleaf','craft');toast(`Повязка восстанавливает ${heal(18)} HP.`);break;
+    case 'simple_trap':placeTrap(false);break;
+    case 'poison_paste':placeTrap(true);break;
+    case 'repellent':hero.stamina=hero.maxStamina;toast('Ты поджёг смесь. Мелкие твари некоторое время будут держаться подальше.');hero.repellent=35;break;
+    default: if(!fromWorld){addInv(id,1);toast('Этот предмет нельзя использовать напрямую.');}
+  }
+  gainSkill('survival',id.includes('meat')||['root','roasted_root','healing_brew','bandage'].includes(id)?.12:.03);
+  if(hero.hp<=0)die('неудачный эксперимент');renderPanels();
+}
+function placeTrap(poisoned){
+  const a=Math.atan2(mouse.worldY-hero.y,mouse.worldX-hero.x);
+  world.objects.push({kind:'trap',id:poisoned?'poison_trap':'simple_trap',x:hero.x+Math.cos(a)*42,y:hero.y+Math.sin(a)*42,r:13,armed:true,poisoned,quality:(skillFactor('trapping',.006,.001)+skillFactor('crafting',.003,.0005))/2});
+  gainSkill('trapping',0.28);
+  toast(poisoned?'Поставлена отравленная ловушка.':'Ловушка установлена.');
+}
+function useHotbar(slot){const id=hero.hotbar[slot];hero.selected=slot;if(!id)return;if(ITEMS[id]?.type==='weapon')return equipWeapon(id);useItem(id);}
+
+function findNear(){
+  for(const c of world.carcasses)ensureCarcass(c);
+  const objs=[...world.objects,...world.carcasses];
+  nearObject=nearest(objs,hero,46);
+}
+function interactionText(){
+  findNear();if(!nearObject)return '';
+  if(nearObject.kind==='plant')return `E 🎒 Подобрать: ${ITEMS[nearObject.id].name}   ·   F ✋ попробовать сейчас`;
+  if(nearObject.kind==='resource')return `E 🎒 Подобрать: ${ITEMS[nearObject.id].name}`;
+  if(nearObject.kind==='trap')return `E 🪤 Снять установленную ловушку`;
+  if(nearObject.kind==='carcass'){
+    ensureCarcass(nearObject);const fr=carcassFreshness(nearObject);
+    return `E 🔪 Разделать (${nearObject.parts.length} частей) · F 🍖 съесть 
