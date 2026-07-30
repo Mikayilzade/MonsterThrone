@@ -1,0 +1,184 @@
+(() => {
+'use strict';
+
+const SAVE_VERSION = 8;
+const RULES = window.MonsterThroneRules;
+if(!RULES)throw new Error('Не загружен rules.js');
+const SPEAR_ICON='<svg class="item-svg spear-svg" viewBox="0 0 64 64" aria-hidden="true"><path d="M8 54L47 15"/><path class="shaft" d="M12 58L51 19"/><path class="head" d="M43 9L58 6L55 21Z"/><path class="wrap" d="M43 19l5 5M39 23l5 5"/></svg>';
+const SAVE_KEYS = {
+  auto:'monsterThrone_v07_auto',
+  quick:'monsterThrone_v07_quick',
+  slot1:'monsterThrone_v07_slot1',
+  slot2:'monsterThrone_v07_slot2',
+  slot3:'monsterThrone_v07_slot3'
+};
+const TAU = Math.PI * 2;
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const dist = (a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const rnd = (a=1,b=0)=>b+Math.random()*(a-b);
+const irnd = (a,b=0)=>Math.floor(rnd(a,b));
+const pick = a=>a[Math.floor(Math.random()*a.length)];
+const fmt = n=>Math.round(n).toLocaleString('ru-RU');
+const $ = id=>document.getElementById(id);
+
+const ITEMS = {
+  spear:{name:'Копьё странника',icon:SPEAR_ICON,type:'weapon',desc:'Грубое, но надёжное копьё.',weapon:'spear'},
+  improved_spear:{name:'Улучшенное костяное копьё',icon:SPEAR_ICON,type:'weapon',desc:'Костяной наконечник, усиленная обвязка и более длинная рабочая дистанция.',weapon:'improved_spear'},
+  branch:{name:'Сухая ветка',icon:'🪵',type:'material',desc:'Основа простых ловушек и костров.'},
+  stone:{name:'Острый камень',icon:'🪨',type:'material',desc:'Можно использовать в простом ремесле.'},
+  fiber:{name:'Волокнистая трава',icon:'🌾',type:'material',desc:'Прочные волокна для связывания.'},
+  root:{name:'Питательный корень',icon:'🥕',type:'food',desc:'Мясистый корень. Его свойства ещё предстоит проверить.'},
+  bluecap:{name:'Синяя шляпка',icon:'🍄',type:'food',desc:'Холодный на ощупь гриб с резким запахом.'},
+  bloodleaf:{name:'Кроволист',icon:'🍁',type:'food',desc:'Красные листья оставляют на пальцах тёмный сок.'},
+  ghostfern:{name:'Серая папороть',icon:'🌿',type:'material',desc:'Сухая, почти невесомая папороть с горьким запахом.'},
+  resin:{name:'Смола тёмного дерева',icon:'🟤',type:'material',desc:'Липкая и горючая смола.'},
+  raw_meat:{name:'Свежее мясо',icon:'🥩',type:'food',desc:'Чужая сила ещё не успела полностью рассеяться.'},
+  hide:{name:'Шкура',icon:'🧶',type:'material',desc:'Прочный материал с туши зверя.'},
+  bone:{name:'Кость',icon:'🦴',type:'material',desc:'Твёрдая кость. Подойдёт для орудий и ловушек.'},
+  rope:{name:'Верёвка из волокон',icon:'🪢',type:'material',desc:'Плотно скрученные волокна для оружия, ловушек и снаряжения.'},
+  bone_tip:{name:'Костяной наконечник',icon:'🔻',type:'component',desc:'Заточенная костяная деталь для древкового оружия.'},
+  bone_knife:{name:'Костяной нож',icon:'🔪',type:'tool',desc:'Инструмент для более уверенной и аккуратной разделки.'},
+  venom:{name:'Ядовитая железа',icon:'🫧',type:'material',desc:'Опасный орган. Лучше не пробовать его напрямую.'},
+  simple_trap:{name:'Простая ловушка',icon:'🪤',type:'tool',desc:'Ранит и ненадолго удерживает существо.'},
+  roasted_root:{name:'Запечённый корень',icon:'🍠',type:'food',desc:'После огня стал мягче и пахнет безопаснее.'},
+  cooked_meat:{name:'Жареное мясо',icon:'🍖',type:'food',desc:'Менее сильное временное усиление, зато безопаснее.'},
+  healing_brew:{name:'Зелёный отвар',icon:'🧪',type:'food',desc:'Случайно найденная смесь с выраженным восстанавливающим действием.'},
+  poison_paste:{name:'Ядовитая паста',icon:'☠️',type:'tool',desc:'Можно нанести на ловушку или приманку.'},
+  repellent:{name:'Дымная смесь',icon:'🌫️',type:'tool',desc:'При горении пахнет настолько мерзко, что мелкие твари держатся подальше.'},
+  bandage:{name:'Грубая повязка',icon:'🩹',type:'food',desc:'Примитивная перевязка из волокон и кроволиста.'}
+};
+
+const PLANT_TRUTH = {
+  root:{title:'Питательный корень',biome:'луга и светлый лес',facts:{seen:'Мясистый корень с жёлтым сердечником.',raw:'Сырой корень утоляет голод и немного восстанавливает силы.',cooked:'После запекания питательность и восстановление заметно выше.',alchemy:'В отваре с Синей шляпкой образует сильный восстанавливающий состав.',craft:'Волокнистая оболочка пригодна в простом ремесле.'}},
+  bluecap:{title:'Синяя шляпка',biome:'тёмный лес и влажные места',facts:{seen:'Гриб с холодной синеватой шляпкой.',raw:'Сырой гриб вызывает слабое отравление.',cooked:'Обычная варка не делает его хорошей пищей.',alchemy:'Вместе с Питательным корнем при варке даёт лечебный отвар.',craft:'Его сок реагирует на некоторые ткани и органы.'}},
+  bloodleaf:{title:'Кроволист',biome:'болотистые низины',facts:{seen:'Красные листья выделяют густой тёмный сок.',raw:'Сырой сок раздражает желудок и слегка вредит.',cooked:'После нагрева почти бесполезен как пища.',alchemy:'Сок усиливает действие некоторых животных ядов.',craft:'Свежие листья помогают остановить кровотечение в грубой повязке.'}},
+  ghostfern:{title:'Серая папороть',biome:'тёмный лес',facts:{seen:'Сухая папороть с резким горьким запахом.',raw:'Пищевой ценности почти нет.',cooked:'Нагрев не делает её едой.',alchemy:'Её дым меняется при смешивании со смолой.',craft:'В смеси со смолой при сжигании отпугивает мелких существ.'}}
+};
+
+const ENEMY_TYPES = {
+  tick:{name:'Песчаный клещ',level:6,hp:48,speed:78,attack:6,defense:1,aggro:110,radius:11,color:'#c8b45d',role:'scavenger',loot:['raw_meat','fiber'],threat:1},
+  grazer:{name:'Листорог',level:14,hp:105,speed:72,attack:11,defense:2,aggro:60,radius:17,color:'#6fc889',role:'grazer',loot:['raw_meat','hide','bone'],threat:2},
+  boar:{name:'Камнегрив',level:27,hp:210,speed:92,attack:28,defense:6,aggro:155,radius:21,color:'#a88867',role:'territorial',loot:['raw_meat','hide','bone'],threat:3},
+  wolf:{name:'Теневой волк',level:42,hp:285,speed:126,attack:39,defense:4,aggro:240,radius:19,color:'#7d8da7',role:'predator',loot:['raw_meat','hide','venom'],threat:4}
+};
+
+const CARCASS_YIELDS = {
+  tick:['raw_meat','fiber'],
+  grazer:['raw_meat','raw_meat','raw_meat','hide','bone'],
+  boar:['raw_meat','raw_meat','raw_meat','raw_meat','hide','bone','bone'],
+  wolf:['raw_meat','raw_meat','raw_meat','hide','bone','venom']
+};
+const THREATS=[['серый','#9ba9a5'],['светло-жёлтый','#e2dd90'],['жёлтый','#e6c75f'],['оранжевый','#e49754'],['красный','#e36666']];
+
+const RECIPES = [
+  {id:'rope',name:'Скрутить верёвку',icon:'🪢',needs:{fiber:3},out:{rope:1},known:true,station:'any',group:'components',text:'Плотно скрутить и связать длинные волокна.'},
+  {id:'bone_tip',name:'Костяной наконечник',icon:'🔻',needs:{bone:1,stone:1},out:{bone_tip:1},known:true,station:'any',group:'components',text:'Обточить кость острым камнем.'},
+  {id:'bone_knife',name:'Костяной нож',icon:'🔪',needs:{bone:2,stone:1,fiber:1},out:{bone_knife:1},known:true,station:'any',group:'equipment',text:'Простой инструмент, который помогает при разделке.'},
+  {id:'improved_spear',name:'Улучшить копьё',icon:SPEAR_ICON,needs:{spear:1,bone_tip:1,rope:1},out:{improved_spear:1},known:true,station:'camp',group:'equipment',unique:true,text:'Заменить грубое острие костяным наконечником и усилить обвязку.'},
+  {id:'simple_trap',name:'Простая ловушка',icon:'🪤',needs:{branch:2,stone:1,rope:1},out:{simple_trap:1},known:true,station:'any',group:'tools',text:'Ветки, груз и прочная верёвка.'},
+  {id:'bandage',name:'Грубая повязка',icon:'🩹',needs:{fiber:2,bloodleaf:1},out:{bandage:1},known:true,station:'any',group:'tools',text:'Перевязка из волокон и свежего кроволиста.'},
+  {id:'roasted_root',name:'Запечь корень',icon:'🍠',needs:{root:1},out:{roasted_root:1},known:true,station:'camp',group:'food',text:'Нужен костёр в лагере.'},
+  {id:'cooked_meat',name:'Поджарить мясо',icon:'🍖',needs:{raw_meat:1},out:{cooked_meat:1},known:true,station:'camp',group:'food',text:'Безопаснее сырого мяса.'}
+];
+
+const HIDDEN_REACTIONS = [
+  {a:'root',b:'bluecap',method:'boil',out:'healing_brew',label:'Варка корня с Синей шляпкой',facts:[['root','alchemy'],['bluecap','alchemy']]},
+  {a:'bloodleaf',b:'venom',method:'crush',out:'poison_paste',label:'Растереть Кроволист с ядовитой железой',facts:[['bloodleaf','alchemy']]},
+  {a:'ghostfern',b:'resin',method:'burn',out:'repellent',label:'Сжечь Серую папороть со смолой',facts:[['ghostfern','craft']]}
+];
+const EXPERIMENT_METHODS={boil:'Сварить',heat:'Нагреть',dry:'Высушить',crush:'Измельчить',mix:'Смешать',coat:'Пропитать / нанести',burn:'Сжечь'};
+
+const canvas=$('game'), ctx=canvas.getContext('2d');
+let DPR=1, W=0,H=0;
+function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;canvas.width=W*DPR;canvas.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);} addEventListener('resize',resize);resize();
+
+const world={size:5200,cx:2600,cy:2600,radius:2440,camp:{x:520,y:2650},time:0,day:1,paused:false,objects:[],enemies:[],carcasses:[],damage:[]};
+const hero={x:560,y:2650,radius:12,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
+  stats:{strength:10,endurance:10,agility:10,intelligence:10},
+  statLatent:{strength:0,endurance:0,agility:0,intelligence:0},
+  attack:11,defense:1,move:109,carry:30,tempPower:0,tempPowerTime:0,growthImpulse:null,
+  inv:{spear:1,simple_trap:2},hotbar:['spear','simple_trap',null,null,null,null,null,null],selected:0,
+  knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,quest:0,levelProgress:0};
+let keys={},mouse={x:0,y:0,down:false,worldX:0,worldY:0};
+let target=null, selectedCarcass=null, nearObject=null, panelType=null, lastFrame=performance.now(), attackCd=0,dodgeCd=0,dodgeTime=0,dodgeVX=0,dodgeVY=0,autoSaveTimer=0;
+let mobileVec={x:0,y:0};
+
+
+const SKILL_META={
+  spear:{name:'Копьё',desc:'Урон, темп атаки и уверенность в ближнем бою.',stats:{strength:.65,agility:.35}},
+  survival:{name:'Выживание',desc:'Польза еды, лечения и сопротивление голоду.',stats:{endurance:.7,intelligence:.3}},
+  trapping:{name:'Ловушки',desc:'Урон, удержание и качество установки ловушек.',stats:{agility:.55,intelligence:.45}},
+  butchery:{name:'Разделка',desc:'Извлечение частей и усвоение потенциала добычи.',stats:{strength:.35,intelligence:.65}},
+  crafting:{name:'Ремесло',desc:'Качество простых изделий и подготовленных устройств.',stats:{agility:.4,intelligence:.6}},
+  research:{name:'Исследование',desc:'Точность анализа и полезность неудачных опытов.',stats:{intelligence:1}}
+};
+const STAT_META={
+  strength:{name:'Сила',short:'СИЛ',desc:'Базовый урон и переносимый вес.'},
+  endurance:{name:'Выносливость',short:'ВЫН',desc:'Жизнь, запас сил и физическая защита.'},
+  agility:{name:'Ловкость',short:'ЛОВ',desc:'Скорость, рывок и часть эффективности оружия.'},
+  intelligence:{name:'Интеллект',short:'ИНТ',desc:'Анализ существ, исследование и сложные действия.'}
+};
+const ENEMY_STAT_PROFILES={
+  tick:{strength:.12,endurance:.18,agility:.48,intelligence:.22},
+  grazer:{strength:.24,endurance:.42,agility:.22,intelligence:.12},
+  boar:{strength:.42,endurance:.38,agility:.14,intelligence:.06},
+  wolf:{strength:.28,endurance:.22,agility:.36,intelligence:.14}
+};
+function ensureHeroFields(){
+  hero.skills=hero.skills||{};
+  for(const id of Object.keys(SKILL_META)){
+    if(!hero.skills[id])hero.skills[id]={mastery:0,readiness:35,uses:0};
+    hero.skills[id].mastery=Number(hero.skills[id].mastery)||0;
+    hero.skills[id].readiness=clamp(Number(hero.skills[id].readiness)||35,0,100);
+    hero.skills[id].uses=Number(hero.skills[id].uses)||0;
+  }
+  hero.stats=hero.stats||{strength:10,endurance:10,agility:10,intelligence:10};
+  hero.statLatent=hero.statLatent||{strength:0,endurance:0,agility:0,intelligence:0};
+  for(const id of Object.keys(STAT_META)){
+    hero.stats[id]=Math.max(1,Number(hero.stats[id])||10);
+    hero.statLatent[id]=Math.max(0,Number(hero.statLatent[id])||0);
+  }
+  hero.levelProgress=Number(hero.levelProgress)||0;
+  hero.knowledge=hero.knowledge||{plants:{},enemies:{},reactions:[]};
+  hero.knowledge.plants=hero.knowledge.plants||{};
+  hero.knowledge.enemies=hero.knowledge.enemies||{};
+  hero.knowledge.reactions=hero.knowledge.reactions||[];
+  hero.knowledge.experimentNotes=hero.knowledge.experimentNotes||[];
+  hero.inv=hero.inv||{};hero.hotbar=Array.isArray(hero.hotbar)?hero.hotbar.slice(0,8):[];while(hero.hotbar.length<8)hero.hotbar.push(null);
+  hero.equipment=hero.equipment||{weapon:hero.inv.improved_spear?'improved_spear':'spear'};
+  if(!hero.inv[hero.equipment.weapon])hero.equipment.weapon=hero.inv.improved_spear?'improved_spear':'spear';
+  hero.weaponQuality=hero.weaponQuality||{spear:1};hero.weaponQuality.spear=hero.weaponQuality.spear||1;
+  if(hero.inv.improved_spear)hero.weaponQuality.improved_spear=hero.weaponQuality.improved_spear||1.12;
+  hero.lastHit=hero.lastHit||null;
+  if(hero.growthImpulse&&(!Number.isFinite(hero.growthImpulse.target)||!Number.isFinite(hero.growthImpulse.bonus)))hero.growthImpulse=null;
+  recomputeDerived(false);
+}
+function skillFactor(id,masteryScale=.006,readinessScale=.0012){
+  ensureHeroFieldsBare();
+  const s=hero.skills[id]||{mastery:0,readiness:35};
+  return 1+s.mastery*masteryScale+s.readiness*readinessScale;
+}
+function butcheryFactor(){return skillFactor('butchery',.004,.0008)*(hero.inv?.bone_knife?1.12:1);}
+function ensureHeroFieldsBare(){
+  hero.skills=hero.skills||{};
+  for(const id of Object.keys(SKILL_META))if(!hero.skills[id])hero.skills[id]={mastery:0,readiness:35,uses:0};
+}
+function weightedPowerMean(values,p=.25){
+  const arr=Object.values(values).map(v=>Math.max(.01,v));
+  return Math.pow(arr.reduce((sum,v)=>sum+Math.pow(v,p),0)/arr.length,1/p);
+}
+function totalStats(){
+  const out={};
+  for(const id of Object.keys(STAT_META))out[id]=hero.stats[id]+hero.statLatent[id];
+  return out;
+}
+function supportedCeiling(){
+  const pm=weightedPowerMean(totalStats(),.25);
+  return clamp(Math.floor(1+Math.max(0,pm-10)/2.5),1,999);
+}
+function totalLatent(){
+  return Object.values(hero.statLatent).reduce((a,b)=>a+b,0);
+}
+function recomputeDerived(preserveRatio=true){
+  if(!hero.stats)return;
+  const oldMax=Number(hero.maxHp)||100,ratio=oldMax>0?cl
