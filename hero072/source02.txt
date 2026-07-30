@@ -1,0 +1,229 @@
+amp((Number(hero.hp)||oldMax)/oldMax,0,1):1;
+  const s=hero.stats;
+  hero.maxHp=Math.round(68+s.endurance*3.2);
+  hero.maxStamina=Math.round(58+s.endurance*1.8+s.agility*1.2);
+  hero.attack=3+s.strength*.65+s.agility*.18;
+  hero.defense=s.endurance*.12;
+  hero.move=85+s.agility*2.4;
+  hero.carry=12+s.strength*1.8;
+  hero.ceiling=Math.max(hero.level||1,supportedCeiling());
+  hero.hp=preserveRatio?clamp(hero.maxHp*ratio,1,hero.maxHp):clamp(Number(hero.hp)||hero.maxHp,1,hero.maxHp);
+  hero.stamina=clamp(Number(hero.stamina)||hero.maxStamina,0,hero.maxStamina);
+}
+function addStatPotential(profile,total,source=''){
+  ensureHeroFieldsBare();
+  const weights=profile||{strength:.25,endurance:.25,agility:.25,intelligence:.25};
+  const sum=Object.values(weights).reduce((a,b)=>a+b,0)||1;
+  for(const id of Object.keys(STAT_META))hero.statLatent[id]+=Math.max(0,total)*(weights[id]||0)/sum;
+  hero.ceiling=Math.max(hero.ceiling,supportedCeiling());
+  if(source)toast(`Скрытый потенциал: +${total.toFixed(2)} (${source}).`);
+}
+function gainSkill(id,amount=0.25){
+  ensureHeroFieldsBare();
+  const s=hero.skills[id]; if(!s)return;
+  s.uses++; s.mastery+=amount/(1+s.mastery/180); s.readiness=clamp(s.readiness+14,0,100);
+  const meta=SKILL_META[id];
+  if(meta&&meta.stats&&amount>=.12)addStatPotential(meta.stats,amount*.018);
+}
+function growthSpeed(){
+  const g=hero.growthImpulse;
+  if(!g)return 1;
+  if(world.time>(g.expires||0)||hero.level>=g.target){hero.growthImpulse=null;return 1;}
+  const remaining=Math.max(0,g.target-hero.level),original=Math.max(1,g.target-(g.startLevel||hero.level));
+  return 1+g.bonus*clamp(remaining/original,0,1);
+}
+function assimilateStats(dt){
+  if(hero.hunger<15||totalLatent()<=.0001)return;
+  let budget=dt*(.018+.0025*hero.stats.endurance/10);
+  for(let guard=0;guard<8&&budget>0;guard++){
+    const ids=Object.keys(STAT_META).filter(id=>hero.statLatent[id]>.00001);
+    if(!ids.length)break;
+    const id=ids.reduce((a,b)=>hero.statLatent[a]>hero.statLatent[b]?a:b);
+    const take=Math.min(budget,hero.statLatent[id]);
+    hero.statLatent[id]-=take;hero.stats[id]+=take;budget-=take;
+  }
+  recomputeDerived(false);
+}
+function carcassYield(type){return [...(CARCASS_YIELDS[type]||['raw_meat'])];}
+function ensureCarcass(c){
+  if(!c)return c;
+  c.kind='carcass';
+  if(!Array.isArray(c.parts)){
+    c.parts=carcassYield(c.type);
+    if(Number.isFinite(c.harvests)&&c.harvests>=0&&c.harvests<c.parts.length)c.parts=c.parts.slice(0,Math.max(0,c.harvests));
+  }
+  c.initialParts=c.initialParts||Math.max(1,c.parts.length);
+  c.age=Number(c.age)||0;
+  return c;
+}
+function carcassFreshness(c){
+  const age=Math.max(0,c.age||0);
+  if(age<300)return {label:'свежая',remaining:300-age,color:'#8fe0bd'};
+  if(age<600)return {label:'портится',remaining:600-age,color:'#e0b96a'};
+  return {label:'разложилась',remaining:0,color:'#9a8f85'};
+}
+function formatTime(seconds){
+  seconds=Math.max(0,Math.ceil(seconds));
+  const m=Math.floor(seconds/60),s=seconds%60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function partSummary(c){
+  ensureCarcass(c);
+  const counts={}; for(const id of c.parts)counts[id]=(counts[id]||0)+1;
+  return Object.entries(counts).map(([id,n])=>`${ITEMS[id]?.icon||'•'} ${ITEMS[id]?.name||id} ×${n}`).join(' · ')||'полезных частей не осталось';
+}
+function maxCraftable(r){return RULES.maxCraftable(hero.inv,r);}
+function canCraftAt(r){return r.station!=='camp'||dist(hero,world.camp)<=125;}
+function missingMaterials(r){return Object.entries(r.needs).filter(([id,n])=>(hero.inv[id]||0)<n).map(([id,n])=>`${ITEMS[id].name}: ${hero.inv[id]||0}/${n}`);}
+function hash2(x,y){let h=(x*374761393+y*668265263)>>>0;h=(h^(h>>13))*1274126177>>>0;return ((h^(h>>16))>>>0)/4294967295;}
+function terrainAt(x,y){
+  const d=Math.hypot(x-world.cx,y-world.cy), edge=world.radius-d;
+  if(edge<0)return 'water'; if(edge<115)return 'sand';
+  const angle=(Math.atan2(y-world.cy,x-world.cx)+TAU)%TAU;
+  const n=hash2(Math.floor(x/240),Math.floor(y/240));
+  if(angle>5.15||angle<.35)return n>.38?'rock':'meadow';
+  if(angle>2.05&&angle<2.9)return n>.42?'swamp':'forest';
+  if(d<1500)return n>.48?'darkforest':'forest';
+  return n>.56?'forest':'meadow';
+}
+const terrainColor={water:'#063444',sand:'#a99362',meadow:'#47774d',forest:'#26583f',darkforest:'#153f34',swamp:'#37564b',rock:'#59615e'};
+
+function addInv(id,n=1){hero.inv[id]=(hero.inv[id]||0)+n;toast(`Получено: ${ITEMS[id].icon} ${ITEMS[id].name}${n>1?' ×'+n:''}`);updateQuestOnItem(id);}
+function removeInv(id,n=1){if((hero.inv[id]||0)<n)return false;hero.inv[id]-=n;if(hero.inv[id]<=0)delete hero.inv[id];return true;}
+function hasInv(needs){return Object.entries(needs).every(([id,n])=>(hero.inv[id]||0)>=n)};
+function addKnowledgePlant(id,fact='seen'){
+  const p=hero.knowledge.plants[id]||(hero.knowledge.plants[id]={facts:[],found:0,uses:0});
+  p.found++;
+  if(!p.facts.includes(fact)){p.facts.push(fact);toast(`📖 Книга мира обновлена: ${PLANT_TRUTH[id].title}`);}
+}
+function enemyKnowledge(type){return hero.knowledge.enemies[type]||(hero.knowledge.enemies[type]={seen:0,fought:0,killed:0,harvested:0});}
+
+function spawnWorld(){
+  world.objects=[];world.enemies=[];world.carcasses=[];world.time=0;world.day=1;
+  const plants=['root','bluecap','bloodleaf','ghostfern'];
+  for(let i=0;i<180;i++){
+    let p=randomLand(); let t=terrainAt(p.x,p.y); let id;
+    if(t==='swamp')id=Math.random()<.55?'bloodleaf':pick(plants);
+    else if(t==='darkforest')id=Math.random()<.5?'bluecap':'ghostfern';
+    else id=Math.random()<.55?'root':pick(plants);
+    world.objects.push({kind:'plant',id,x:p.x,y:p.y,r:8});
+  }
+  for(let i=0;i<90;i++){let p=randomLand();world.objects.push({kind:'resource',id:pick(['branch','stone','fiber','resin']),x:p.x,y:p.y,r:7});}
+  const counts={tick:28,grazer:22,boar:12,wolf:7};
+  for(const [type,n] of Object.entries(counts))for(let i=0;i<n;i++)spawnEnemy(type);
+  hero.x=world.camp.x+40;hero.y=world.camp.y;hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;hero.hunger=100;hero.tempPower=0;hero.tempPowerTime=0;target=null;
+}
+function randomLand(){for(let i=0;i<200;i++){const a=Math.random()*TAU,r=Math.sqrt(Math.random())*(world.radius-150),p={x:world.cx+Math.cos(a)*r,y:world.cy+Math.sin(a)*r};if(terrainAt(p.x,p.y)!=='water')return p;}return {x:world.camp.x,y:world.camp.y};}
+function spawnEnemy(type,x=null,y=null){const d=ENEMY_TYPES[type],p=x==null?randomLand():{x,y};world.enemies.push({id:crypto.randomUUID?crypto.randomUUID():Math.random().toString(36),type,x:p.x,y:p.y,hp:d.hp,maxHp:d.hp,level:d.level,state:'wander',vx:0,vy:0,dir:Math.random()*TAU,think:0,attackCd:0,slow:0,dead:false});}
+
+function resetHeroNew(){
+  Object.assign(hero,{x:560,y:2650,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
+    stats:{strength:10,endurance:10,agility:10,intelligence:10},statLatent:{strength:0,endurance:0,agility:0,intelligence:0},
+    attack:11,defense:1,move:109,carry:30,tempPower:0,tempPowerTime:0,growthImpulse:null,
+    inv:{spear:1,simple_trap:2},hotbar:['spear','simple_trap',null,null,null,null,null,null],selected:0,
+    knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,quest:0,levelProgress:0});
+  ensureHeroFields();recomputeDerived(false);hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;selectedCarcass=null;spawnWorld();saveGame(true,'auto');
+}
+function makeSaveData(){
+  ensureHeroFields();
+  return {v:SAVE_VERSION,world:{time:world.time,day:world.day,objects:world.objects,enemies:world.enemies,carcasses:world.carcasses},hero:{...hero},savedAt:Date.now()};
+}
+function saveGame(silent=false,key='auto'){
+  const storageKey=SAVE_KEYS[key]||key;
+  localStorage.setItem(storageKey,JSON.stringify(makeSaveData()));
+  hero.lastSave=Date.now();if(!silent)toast(key==='quick'?'Быстрое сохранение создано':'Игра сохранена');updateContinue();
+}
+function loadGame(key='auto'){
+  try{
+    const storageKey=SAVE_KEYS[key]||key,raw=localStorage.getItem(storageKey);if(!raw)return false;
+    const d=JSON.parse(raw);if(![7,8].includes(d.v))return false;
+    Object.assign(hero,RULES.migrateHero(d.hero));ensureHeroFields();recomputeDerived(false);
+    world.time=d.world.time;world.day=d.world.day;world.objects=d.world.objects||[];world.enemies=d.world.enemies||[];
+    world.carcasses=(d.world.carcasses||[]).map(ensureCarcass);
+    target=null;selectedCarcass=null;return true;
+  }catch(e){console.error(e);return false;}
+}
+function saveInfo(key){
+  try{const raw=localStorage.getItem(SAVE_KEYS[key]);if(!raw)return null;const d=JSON.parse(raw);return {key,savedAt:d.savedAt||0,level:d.hero?.level||1,playTime:d.hero?.playTime||0};}catch{return null;}
+}
+function allSaves(){return Object.keys(SAVE_KEYS).map(saveInfo).filter(Boolean).sort((a,b)=>b.savedAt-a.savedAt);}
+function latestSave(){return allSaves()[0]||null;}
+function updateContinue(){
+  const any=allSaves().length>0;
+  $('continueBtn').classList.toggle('hidden',!any);
+  const loadStart=$('loadStartBtn');if(loadStart)loadStart.classList.toggle('hidden',!any);
+}
+function startGame(loadKey=null){
+  if(loadKey&&!loadGame(loadKey))resetHeroNew();else if(!loadKey)resetHeroNew();
+  $('startScreen').classList.add('hidden');$('hud').classList.remove('hidden');world.paused=false;lastFrame=performance.now();requestAnimationFrame(loop);
+  toast(loadKey?'Сохранение загружено':'Ты снова один на берегу огромного острова.');
+}
+$('newBtn').onclick=()=>startGame(null);
+$('continueBtn').onclick=()=>{const latest=latestSave();startGame(latest?latest.key:null);};
+if($('loadStartBtn'))$('loadStartBtn').onclick=()=>openSaveManager('load',true);
+updateContinue();
+
+let saveManagerMode='load',saveManagerFromStart=false;
+function openSaveManager(mode='load',fromStart=false){
+  saveManagerMode=mode;saveManagerFromStart=fromStart;
+  $('saveManagerTitle').textContent=mode==='save'?'Сохранить игру':'Загрузить игру';
+  $('saveManager').classList.remove('hidden');renderSaveSlots();
+}
+function closeSaveManager(){$('saveManager').classList.add('hidden');}
+function renderSaveSlots(){
+  const box=$('saveSlots');if(!box)return;box.innerHTML='';
+  for(const key of ['auto','quick','slot1','slot2','slot3']){
+    const info=saveInfo(key),names={auto:'Автосохранение',quick:'Быстрое сохранение',slot1:'Слот 1',slot2:'Слот 2',slot3:'Слот 3'};
+    const row=document.createElement('div');row.className='save-slot';
+    row.innerHTML=`<div><b>${names[key]}</b><small>${info?`ур. ${info.level} · ${new Date(info.savedAt).toLocaleString('ru-RU')} · в мире ${formatTime(info.playTime)}`:'пусто'}</small></div><button>${saveManagerMode==='save'?'Сохранить':'Загрузить'}</button>`;
+    const btn=row.querySelector('button');
+    if(saveManagerMode==='load'&&!info)btn.disabled=true;
+    btn.onclick=()=>{
+      if(saveManagerMode==='save'){saveGame(false,key);renderSaveSlots();}
+      else{closeSaveManager();if(saveManagerFromStart)startGame(key);else{loadGame(key);world.paused=false;$('pauseScreen').classList.add('hidden');toast('Сохранение загружено');}}
+    };
+    box.appendChild(row);
+  }
+}
+function exportSave(){
+  const data=makeSaveData(),blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=`MonsterThrone-v07-level-${hero.level}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function importSaveFile(file){
+  const reader=new FileReader();reader.onload=()=>{
+    try{const d=JSON.parse(reader.result);if(![7,8].includes(d.v))throw new Error('Неподдерживаемая версия');d.v=SAVE_VERSION;d.hero=RULES.migrateHero(d.hero);localStorage.setItem(SAVE_KEYS.slot1,JSON.stringify(d));toast('Сейв импортирован в Слот 1');updateContinue();renderSaveSlots();}
+    catch(e){toast(`Не удалось импортировать сейв: ${e.message}`,'bad');}
+  };reader.readAsText(file);
+}
+function threatFor(enemy){const delta=enemy.level-hero.level;let i=delta<-6?0:delta<5?1:delta<15?2:delta<30?3:4;return THREATS[i];}
+function selectEnemy(e){
+  selectedCarcass=null;target=e;const k=enemyKnowledge(e.type);k.seen++;renderTarget();
+}
+function selectCarcass(c){target=null;selectedCarcass=ensureCarcass(c);renderTarget();}
+function renderTarget(){
+  if(selectedCarcass){
+    const c=selectedCarcass;
+    if(!world.carcasses.includes(c)||c.age>=600){selectedCarcass=null;$('targetPanel').classList.add('hidden');return;}
+    ensureCarcass(c);
+    const d=ENEMY_TYPES[c.type],fresh=carcassFreshness(c);
+    $('targetPanel').classList.remove('hidden');
+    $('targetName').textContent=`Туша: ${d.name}`;
+    $('targetThreat').textContent=fresh.label;
+    $('targetThreat').style.color=fresh.color;
+    const ratio=c.parts.length/Math.max(1,c.initialParts);
+    $('targetHp').style.width=(ratio*100)+'%';
+    $('targetHpText').textContent=`Осталось частей: ${c.parts.length}/${c.initialParts}`;
+    $('targetInfo').innerHTML=`Уровень добычи: около ${d.level}.<br>До следующей стадии свежести: ${formatTime(fresh.remaining)}.<br><b>Можно извлечь:</b> ${partSummary(c)}.<br><span class="unknown">E — разделать одну часть · F — съесть кусок мяса прямо сейчас</span>`;
+    return;
+  }
+  if(!target||target.dead){$('targetPanel').classList.add('hidden');return;}
+  const d=ENEMY_TYPES[target.type],k=enemyKnowledge(target.type),th=threatFor(target);
+  $('targetPanel').classList.remove('hidden');
+  $('targetName').textContent=k.seen>1?d.name:'Неизвестное существо';
+  $('targetThreat').textContent=th[0];$('targetThreat').style.color=th[1];
+  $('targetHp').style.width=(target.hp/target.maxHp*100)+'%';
+  $('targetHpText').textContent=k.fought>0?`${fmt(target.hp)} / ${fmt(target.maxHp)} HP`:(target.hp/target.maxHp>.8?'выглядит здоровым':target.hp/target.maxHp>.4?'заметно ранено':'тяжело ранено');
+  const research=hero.skills.research?.mastery||0;
+  let info=`Угроза: ${th[0]}. `;
+  if(k.seen>=Math.max(1,3-Math.floor(research/20)))info+=`Поведение: ${roleText(d.role)}. `;
+  if(k.fo

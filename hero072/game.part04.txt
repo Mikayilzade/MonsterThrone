@@ -1,0 +1,82 @@
+Ты пока не открыл ни одной полезной реакции.</div>'}<div class="sectiontitle">Наблюдения неудачных опытов</div>${hero.knowledge.experimentNotes.length?hero.knowledge.experimentNotes.map(x=>`<div class="bookentry"><div>${x}</div></div>`).join(''):'<div class="empty">Записей пока нет.</div>'}`;
+    const go=$('expGo');if(go)go.onclick=()=>{if(confirm('Оба материала будут потрачены. Продолжить?'))experiment($('expA').value,$('expB').value,$('expMethod').value);};
+  };
+  body.querySelectorAll('[data-craft-tab]').forEach(b=>b.onclick=()=>{body.querySelectorAll('[data-craft-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');b.dataset.craftTab==='recipes'?renderRecipes():renderExperiment();});renderRecipes();
+}
+function renderBook(body){let html='<div class="tabs"><button class="active" data-book-tab="flora">Флора</button><button data-book-tab="fauna">Фауна</button><button data-book-tab="discoveries">Открытия</button></div><div id="bookInner"></div>';body.innerHTML=html;const inner=body.querySelector('#bookInner');
+const flora=()=>{let out='';for(const [id,k] of Object.entries(hero.knowledge.plants)){const p=PLANT_TRUTH[id];out+=`<div class="bookentry"><h3>${p.title}</h3><small>Где встречал: ${p.biome}</small>${['seen','raw','cooked','alchemy','craft'].map(f=>`<div class="fact ${k.facts.includes(f)?'':'unknown'}">${k.facts.includes(f)?p.facts[f]:'Неизученное свойство.'}</div>`).join('')}</div>`;}inner.innerHTML=out||'<div class="empty">Ты ещё не записал ни одного растения.</div>';};
+const fauna=()=>{let out='';for(const [type,k] of Object.entries(hero.knowledge.enemies)){const d=ENEMY_TYPES[type];const name=k.seen>1?d.name:'Неизвестное существо';out+=`<div class="enemyentry"><div><h3>${name}</h3><small>Встречено: ${k.seen} · столкновений: ${k.fought} · убито: ${k.killed} · разделано: ${k.harvested}</small><div class="fact">${k.seen>=3?'Поведение: '+roleText(d.role)+'.':'Поведение пока неясно.'}</div><div class="fact">${k.fought?'Наблюдаемый урон около '+d.attack+'.':'Ты ещё не проверял его силу на себе.'}</div></div></div>`;}inner.innerHTML=out||'<div class="empty">Ты ещё не изучал животных.</div>';};
+const discoveries=()=>{const reactions=hero.knowledge.reactions.length?hero.knowledge.reactions.map((x,i)=>`<div class="bookentry"><h3>Открытие ${i+1}</h3><div>${x}</div></div>`).join(''):'<div class="empty">Подтверждённых комбинаций пока нет. Нагревай, суши, измельчай, смешивай, пропитывай и сжигай материалы.</div>';const notes=hero.knowledge.experimentNotes.length?`<div class="sectiontitle">Наблюдения</div>${hero.knowledge.experimentNotes.map(x=>`<div class="bookentry"><div>${x}</div></div>`).join('')}`:'';inner.innerHTML=reactions+notes;};
+body.querySelectorAll('[data-book-tab]').forEach(b=>b.onclick=()=>{body.querySelectorAll('[data-book-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');({flora,fauna,discoveries})[b.dataset.bookTab]();});flora();}
+
+function togglePause(force){if(hero.respawning)return;world.paused=force!==undefined?force:!world.paused;$('pauseScreen').classList.toggle('hidden',!world.paused);if(world.paused)saveGame(true,'auto');}
+$('pauseBtn').onclick=()=>togglePause();$('resumeBtn').onclick=()=>togglePause(false);
+$('saveBtn').onclick=()=>saveGame(false,'quick');
+if($('saveSlotsBtn'))$('saveSlotsBtn').onclick=()=>openSaveManager('save',false);
+if($('loadSlotsBtn'))$('loadSlotsBtn').onclick=()=>openSaveManager('load',false);
+if($('exportSaveBtn'))$('exportSaveBtn').onclick=exportSave;
+if($('saveManagerClose'))$('saveManagerClose').onclick=closeSaveManager;
+if($('importSaveBtn'))$('importSaveBtn').onclick=()=>$('importSaveInput').click();
+if($('importSaveInput'))$('importSaveInput').onchange=e=>{const f=e.target.files[0];if(f)importSaveFile(f);e.target.value='';};
+$('newFromPauseBtn').onclick=()=>{if(confirm('Начать новый мир? Существующие слоты сохранений останутся.'))location.reload();};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&!$('hud').classList.contains('hidden')){world.paused=true;$('pauseScreen').classList.remove('hidden');saveGame(true,'auto');}});
+
+function update(dt){
+  if(world.paused||hero.respawning)return;
+  world.time+=dt;hero.playTime+=dt;autoSaveTimer+=dt;attackCd=Math.max(0,attackCd-dt);dodgeCd=Math.max(0,dodgeCd-dt);hero.repellent=Math.max(0,(hero.repellent||0)-dt);ensureHeroFields();for(const sk of Object.values(hero.skills))sk.readiness=Math.max(20,sk.readiness-dt*.018);
+  if(autoSaveTimer>12){autoSaveTimer=0;saveGame(true,'auto');}
+  const hungerDrain=.055/skillFactor('survival',.0025,.0004);hero.hunger=Math.max(0,hero.hunger-dt*hungerDrain);if(hero.hunger<=0){hero.hp-=dt*2.2;if(hero.hp<=0)die('голод');}
+  hero.stamina=clamp(hero.stamina+dt*(10+hero.stats.endurance*.2),0,hero.maxStamina);if(hero.tempPowerTime>0){hero.tempPowerTime-=dt;if(hero.tempPowerTime<=0){hero.tempPower=0;toast('Временная сила рассеялась.');}}
+  assimilateStats(dt);
+  if(hero.level<hero.ceiling&&hero.level<999){hero.levelProgress=(hero.levelProgress||0)+dt/60*growthSpeed();while(hero.levelProgress>=1&&hero.level<hero.ceiling){hero.level++;hero.levelProgress-=1;toast(`Уровень вырос до ${hero.level}.`);}}
+  else hero.levelProgress=Math.min(hero.levelProgress||0,.999);
+  let v=inputVec();const terrain=terrainAt(hero.x,hero.y);let speed=hero.move*(terrain==='swamp'?.72:terrain==='rock'?.83:1);
+  if(dodgeTime>0){dodgeTime-=dt;moveHero(dodgeVX*dt,dodgeVY*dt);} else moveHero(v.x*speed*dt,v.y*speed*dt);
+  updateEnemies(dt);updateTraps();updateCarcasses(dt);updateHud();updateQuest();
+}
+function moveHero(dx,dy){let nx=hero.x+dx,ny=hero.y+dy;if(terrainAt(nx,ny)!=='water'){hero.x=nx;hero.y=ny;}else{const a=Math.atan2(ny-world.cy,nx-world.cx),r=world.radius-6;hero.x=world.cx+Math.cos(a)*r;hero.y=world.cy+Math.sin(a)*r;}}
+function updateEnemies(dt){for(const e of world.enemies){if(e.dead)continue;const d=ENEMY_TYPES[e.type];e.attackCd=Math.max(0,e.attackCd-dt);e.slow=Math.max(0,e.slow-dt);e.think-=dt;let toHero=dist(e,hero),speed=d.speed*(e.slow>0?.42:1);if(hero.repellent>0&&e.type==='tick'&&toHero<190){const a=Math.atan2(e.y-hero.y,e.x-hero.x);e.x+=Math.cos(a)*speed*1.4*dt;e.y+=Math.sin(a)*speed*1.4*dt;continue;}
+    if((d.role==='predator'||d.role==='territorial'||d.role==='scavenger')&&toHero<d.aggro){e.state='attack';const a=Math.atan2(hero.y-e.y,hero.x-e.x);e.x+=Math.cos(a)*speed*dt;e.y+=Math.sin(a)*speed*dt;if(toHero<d.radius+hero.radius+8&&e.attackCd<=0){e.attackCd=1.0;heroHit(e);}}
+    else if(d.role==='grazer'&&toHero<90){e.state='flee';const a=Math.atan2(e.y-hero.y,e.x-hero.x);e.x+=Math.cos(a)*speed*1.15*dt;e.y+=Math.sin(a)*speed*1.15*dt;}
+    else{e.state='wander';if(e.think<=0){e.think=rnd(4,1.2);e.dir+=rnd(2,-2);}e.x+=Math.cos(e.dir)*speed*.35*dt;e.y+=Math.sin(e.dir)*speed*.35*dt;}
+    if(terrainAt(e.x,e.y)==='water'){const a=Math.atan2(world.cy-e.y,world.cx-e.x);e.x+=Math.cos(a)*speed*2*dt;e.y+=Math.sin(a)*speed*2*dt;}
+    if(d.role==='predator'){const prey=nearest(world.enemies.filter(x=>!x.dead&&x!==e&&ENEMY_TYPES[x.type].role==='grazer'),e,100);if(prey&&Math.random()<dt*.7){prey.hp-=d.attack*.5;if(prey.hp<=0)killEnemy(prey,'monster');}}
+  }}
+function updateTraps(){
+  for(const o of world.objects){
+    if(o.kind!=='trap'||!o.armed)continue;
+    const e=nearest(world.enemies.filter(x=>!x.dead),o,18);
+    if(e){
+      o.armed=false;const quality=o.quality||1,dmg=Math.round((o.poisoned?78:34)*quality*skillFactor('trapping',.004,.0007));e.hp-=dmg;e.slow=4*clamp(quality,.8,2.2);gainSkill('trapping',0.35);
+      floatDamage(e.x,e.y,'-'+dmg,'out');combat(`Ловушка → ${ENEMY_TYPES[e.type].name}: ${dmg}`,'out');
+      if(e.hp<=0)killEnemy(e,'hero');
+      setTimeout(()=>{const i=world.objects.indexOf(o);if(i>=0)world.objects.splice(i,1);},300);
+    }
+  }
+}
+function updateCarcasses(dt){
+  for(const c of world.carcasses){ensureCarcass(c);c.age+=dt;}
+  for(let i=world.carcasses.length-1;i>=0;i--){
+    const c=world.carcasses[i];
+    if(c.age>600||(c.parts.length<=0&&c.age>90)){
+      if(selectedCarcass===c)selectedCarcass=null;
+      world.carcasses.splice(i,1);
+    }
+  }
+}
+
+function updateHud(){
+  $('hpBar').style.width=(hero.hp/hero.maxHp*100)+'%';$('staminaBar').style.width=(hero.stamina/hero.maxStamina*100)+'%';$('hungerBar').style.width=hero.hunger+'%';$('hpText').textContent=`${fmt(hero.hp)}/${fmt(hero.maxHp)}`;$('staminaText').textContent=Math.round(hero.stamina)+'%';$('hungerText').textContent=Math.round(hero.hunger)+'%';$('levelText').textContent=`ур. ${hero.level} / потолок ${Math.max(hero.ceiling,hero.level)}`;renderTarget();renderHotbar();const p=interactionText();$('prompt').textContent=p;$('prompt').classList.toggle('hidden',!p);
+}
+function renderHotbar(){const bar=$('hotbar');bar.innerHTML='';hero.hotbar.forEach((id,i)=>{const b=document.createElement('button');b.className='slot'+(i===hero.selected?' selected':'');b.innerHTML=`<span class="key">${i+1}</span>${id?`<span class="qty">${ITEMS[id]?.type==='weapon'?'':hero.inv[id]||0}</span><span class="icon">${ITEMS[id].icon}</span><span class="label">${ITEMS[id].name}</span>`:'<span class="icon">·</span><span class="label">пусто</span>'}`;b.onclick=()=>useHotbar(i);bar.appendChild(b);});}
+function updateQuestOnItem(id){if(hero.quest===0&&['root','bluecap','bloodleaf','ghostfern'].includes(id))hero.quest=1;if(hero.quest===1&&(hero.inv.simple_trap||0)>=1)hero.quest=2;}
+function updateQuest(){const data=[['Изучи живое','Найди растение, положи его в сумку и реши, что с ним делать.'],['Подготовься','Сделай ловушку или повязку. Крафт открыт клавишей C.'],['Проверь силу мира','Выбери существо кликом. Попробуй ловушку, бой или просто наблюдение.'],['Экспериментируй','Собирай материалы и проверяй неожиданные сочетания. Книга запомнит подтверждённые свойства.']];if(hero.quest===2&&Object.values(hero.knowledge.enemies).some(k=>k.fought||k.killed))hero.quest=3;$('questTitle').textContent=data[hero.quest][0];$('questText').textContent=data[hero.quest][1];}
+function combat(text,kind,details=''){const log=$('combatLog');log.classList.remove('hidden');const d=document.createElement('div');d.className=kind;if(details)d.innerHTML=`<details><summary>${text}</summary><small>${details}</small></details>`;else d.textContent=text;log.prepend(d);while(log.children.length>5)log.lastChild.remove();}
+function toast(text,bad=false){const d=document.createElement('div');d.className='toast'+(bad?' bad':'');d.textContent=text;$('toasts').appendChild(d);setTimeout(()=>d.remove(),3600);}
+function floatDamage(wx,wy,text,kind){const c=camera(),d=document.createElement('div');d.className='damage '+kind;d.textContent=text;d.style.left=(wx-c.x)+'px';d.style.top=(wy-c.y-18)+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),950);}
+
+function camera(){return {x:clamp(hero.x-W/2,0,world.size-W),y:clamp(hero.y-H/2,0,world.size-H)};}
+function draw(){const c=camera();ctx.clearRect(0,0,W,H);drawTerrain(c);drawDecor(c);drawCamp(c);drawObjects(c);drawCarcasses(c);drawEnemies(c);drawHero(c);drawMinimap();}
+function drawTerrain(c){const tile=96,x0=Math.floor(c.x/tile)*tile,y0=Math.floor(c.y/tile)*tile;for(let y=y0;y<c.y+H+tile;y+=tile)for(let x=x0;x<c.x+W+tile;x+=tile){const t=terrainAt(x+tile/2,y+tile/2);ctx.fillStyle=terrainColor[t];ctx.fillRect(x-c.x,y-c.y,tile+1,tile+1);const n=hash2(x/tile,y/tile);if(t!=='water'){ctx.fillStyle=`rgba(255,255,255,${.018+n*.018})`;ctx.fillRect(x-c.x,y-c.y,tile+1,tile+1);}}
+  const gx=world.cx-c.x,gy=world.cy-c.y;ctx.beginPath();ctx.arc(gx,gy,world.radius,0,TAU);ctx.strokeStyle='rgba(222,235,199,.22)';ctx.lineWidth=5;ctx.stroke();}
+function drawDecor(c){const tile=120,x0=Math.floor(c.x/tile)*tile,y0=Math.floor(c.y/tile)*tile;for(let y=y0;y<c.y+H+tile;y+=tile)for(let x=x0;x<c.x+W+tile;x+=tile){const t=terrainAt(x+55,y+55),n=hash2(x/tile+22,y/tile+17),sx=x-c.x+20+n*70,sy=y-c.y+18+hash2(x/tile+7,y/tile+3)*70;if((t==='forest'||t==='darkforest')&&n>.28)drawTree(sx,sy,t==='darkforest');else if(t==='rock'&&n>.5)drawRock(sx,sy);else if((t==='meadow'||t===

@@ -1,0 +1,46 @@
+sk=hero.skills[id],read=Math.round(sk.readiness);let effect='';
+      if(id==='survival')effect=`еда и лечение +${Math.round((skillFactor(id,.005,.001)-1)*100)}%; голод расходуется медленнее`;
+      if(id==='trapping')effect=`урон и удержание ловушек +${Math.round((skillFactor(id,.004,.0007)-1)*100)}%`;
+      if(id==='butchery')effect=`усвоение добычи +${Math.round((butcheryFactor()-1)*100)}%${hero.inv.bone_knife?' · костяной нож даёт ещё +12%':''}`;
+      if(id==='crafting')effect=`качество изделий +${Math.round((skillFactor(id,.003,.0005)-1)*100)}%`;
+      if(id==='research')effect=`точнее наблюдения и полезнее записи неудачных опытов`;
+      return `<div class="skillrow"><div><b>${SKILL_META[id].name}</b><small>${SKILL_META[id].desc}</small><small class="skill-effect">${effect}</small></div><div class="skillnumbers"><b>${sk.mastery.toFixed(1)}</b><small>готовность ${read}% · действий ${sk.uses}</small></div></div>`;
+    };
+    inner.innerHTML=`<p class="skillnote">Число мастерства — опыт, а не урон. Фактический эффект считается вместе с оружием, характеристиками и готовностью.</p>
+      <div class="combat-breakdown"><div class="combat-title">${ITEMS[equippedWeaponId()].icon}<div><b>${ITEMS[equippedWeaponId()].name}</b><small>мастерство ${spear.mastery.toFixed(1)} · готовность ${Math.round(spear.readiness)}%</small></div></div>
+      <div class="damage-result"><b>${current.minDamage}–${current.maxDamage}</b><span>обычный урон${target&&!target.dead?' по выбранной цели':' до брони цели'}</span></div>
+      <div class="formula-list"><span>тело ${current.bodyBase.toFixed(1)}</span><span>оружие ${current.weaponBase.toFixed(1)}</span><span>Сила +${current.strengthContribution.toFixed(1)}</span><span>Ловкость +${current.agilityContribution.toFixed(1)}</span><span>мастерство +${Math.round(current.masteryBonus*100)}%</span><span>готовность ×${current.readinessMultiplier.toFixed(2)}</span><span>точность ${Math.round(current.accuracy*100)}%</span><span>удар раз в ${current.attackInterval.toFixed(2)} с</span><span>выносливость −${current.staminaCost.toFixed(1)}</span></div>
+      <div class="next-threshold">При мастерстве ${nextAt}: урон ${next.minDamage}–${next.maxDamage}, интервал ${next.attackInterval.toFixed(2)} с, точность ${Math.round(next.accuracy*100)}%.</div></div>`+
+      ['survival','trapping','butchery','crafting','research'].map(otherSkill).join('');
+  };
+  body.querySelectorAll('[data-char-tab]').forEach(b=>b.onclick=()=>{
+    body.querySelectorAll('[data-char-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+    if(b.dataset.charTab==='stats')renderStats();else if(b.dataset.charTab==='progress')renderProgress();else renderSkills();
+  });
+  renderStats();
+}
+function renderInventory(body){
+  let html='<div class="sectiontitle">Содержимое сумки</div>';const entries=Object.entries(hero.inv);if(!entries.length)html+='<div class="empty">Сумка пуста.</div>';
+  for(const [id,n] of entries){const it=ITEMS[id];if(!it)continue;let stats='';
+    if(it.type==='weapon'){const w=RULES.WEAPONS[it.weapon],q=hero.weaponQuality?.[id]||1;stats=`<div class="item-stats"><span>оружие</span><span>база ${(w.baseDamage*q).toFixed(1)}</span><span>дальность ${w.range}</span><span>темп ${w.interval.toFixed(2)} с</span><span>${w.durability?`прочность ${w.durability}`:'неразрушаемо'}</span></div>`;}
+    else stats=`<small class="item-type">${({material:'материал',component:'деталь',tool:'инструмент',food:'еда'})[it.type]||it.type}</small>`;
+    const equipped=it.type==='weapon'&&equippedWeaponId()===id;
+    html+=`<div class="itemrow"><div class="icon">${it.icon}</div><div><b>${it.name} ×${n}${equipped?' · экипировано':''}</b><small>${it.desc}</small>${stats}</div><div class="itemactions">${it.type==='weapon'?`<button data-equip="${id}" ${equipped?'disabled':''}>${equipped?'В руках':'Экипировать'}</button>`:''}${it.type==='food'||['simple_trap','poison_paste','repellent','bandage'].includes(id)?`<button data-use="${id}">Использовать</button>`:''}<button data-hot="${id}">В быстрый слот</button></div></div>`;
+  }
+  body.innerHTML=html;body.querySelectorAll('[data-use]').forEach(b=>b.onclick=()=>useItem(b.dataset.use));body.querySelectorAll('[data-hot]').forEach(b=>b.onclick=()=>assignHotbar(b.dataset.hot));body.querySelectorAll('[data-equip]').forEach(b=>b.onclick=()=>equipWeapon(b.dataset.equip));
+}
+function assignHotbar(id){let idx=hero.hotbar.findIndex(x=>!x);if(idx<0)idx=hero.selected;hero.hotbar[idx]=id;hero.selected=idx;toast(`${ITEMS[id].name} назначено в слот ${idx+1}`);renderHotbar();}
+function renderCraft(body){
+  const camp=dist(hero,world.camp)<125;
+  body.innerHTML=`<div class="tabs"><button class="active" data-craft-tab="recipes">Рецепты</button><button data-craft-tab="experiment">Свободный эксперимент</button></div><div id="craftInner"></div>`;
+  const inner=body.querySelector('#craftInner');
+  const renderRecipes=()=>{
+    const labels={components:'Детали и материалы',equipment:'Оружие и инструменты',tools:'Снаряжение',food:'Готовка'};
+    inner.innerHTML=`<div class="craft-explain"><b>Рецепт создаёт известную вещь.</b><span>Здесь заранее виден результат и точная стоимость. Эксперимент находится на соседней вкладке и может испортить материалы.</span></div><div class="sectiontitle">${camp?'Ты у костра':'Ты далеко от лагеря'}</div>`+
+    Object.entries(labels).map(([group,label])=>`<div class="recipe-group"><h3>${label}</h3>${RECIPES.filter(r=>r.group===group).map(r=>{
+      const max=r.unique&&hero.inv[r.id]?0:maxCraftable(r),stationOk=canCraftAt(r),usable=stationOk&&max>0,rangeMax=Math.max(1,max);
+      return `<div class="recipe ${usable?'':'locked'}"><div class="icon">${r.icon}</div><div><b>${r.name}</b><small>${r.text}</small><div class="requirements">${Object.entries(r.needs).map(([id,n])=>`<span class="${(hero.inv[id]||0)>=n?'good':'danger'}">${ITEMS[id].name} ${hero.inv[id]||0}/${n}</span>`).join('')}</div>${!stationOk?'<small class="danger">Нужен костёр в лагере.</small>':''}${r.unique&&hero.inv[r.id]?'<small class="good">Уже изготовлено.</small>':''}
+      <div class="batchline"><input data-craft-range="${r.id}" type="range" min="1" max="${rangeMax}" value="1" ${!usable||r.unique?'disabled':''}><span data-craft-count="${r.id}">${usable?1:0}</span><button data-craft-max="${r.id}" ${!usable||r.unique?'disabled':''}>Макс (${max})</button></div></div><div class="recipe-buttons"><button data-recipe="${r.id}" ${!usable?'disabled':''}>Создать ×${usable?1:0}</button></div></div>`;
+    }).join('')}</div>`).join('');
+    inner.querySelectorAll('[data-craft-range]').forEach(inp=>inp.oninput=()=>{const id=inp.dataset.craftRange,val=inp.value,label=inner.querySelector(`[data-craft-count="${id}"]`),btn=inner.querySelector(`[data-recipe="${id}"]`);if(label)label.textContent=val;if(btn)btn.textContent=`Создать ×${val}`;});
+    inner.querySelectorAll('[data-craft-max]').forEach(btn=>btn.onclick=()=>{const id=btn.dataset.craftMax,inp=inner.querySelector(`[data-craf
