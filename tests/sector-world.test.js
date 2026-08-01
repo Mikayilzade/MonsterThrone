@@ -63,4 +63,21 @@ test('serialized snapshots do not alias later manager mutations',()=>{
   const restored=new world.SectorManager(options);restored.restore(save);restored.update(8400,8400);assert.strictEqual(restored.activeEntities().find(e=>e.uid==='snapshot').armed,true);
 });
 test('restore rejects sector data from another generator version',()=>{const m=new world.SectorManager(options);assert.throws(()=>m.restore({version:'future',seed:options.seed}),/version/);});
-console.log(`\n${passed}/19 sector world tests passed.`);
+test('two biomes visited inside one sector are both recorded once',()=>{
+  const c=world.createConfig(options),a={x:7510,y:450},b={x:7610,y:590},ca=world.sectorCoords(a.x,a.y,c),cb=world.sectorCoords(b.x,b.y,c),visited=[];
+  assert.deepStrictEqual(ca,cb);const first=world.terrainAt(a.x,a.y,c),second=world.terrainAt(b.x,b.y,c);assert.notStrictEqual(first,second);
+  assert(world.recordBiomeVisit(visited,first));assert(world.recordBiomeVisit(visited,second));assert(!world.recordBiomeVisit(visited,second));assert.deepStrictEqual(visited,[first,second]);
+});
+test('creature update preflight separates invalid coordinates before simulation',()=>{
+  const c=world.createConfig(options),valid={uid:'valid',x:c.camp.x,y:c.camp.y},nan={uid:'nan',x:NaN,y:c.camp.y},water={uid:'water',x:0,y:0};
+  const result=world.partitionLandEntities([nan,valid,water],c);assert.deepStrictEqual(result.valid,[valid]);assert.deepStrictEqual(result.removed,[nan,water]);
+});
+test('legacy hero with invalid, outside, or water coordinates returns to camp',()=>{
+  const c=world.createConfig(options);for(const hero of [{x:NaN,y:1},{x:-1,y:c.cy},{x:0,y:0}])assert.deepStrictEqual(world.safeLandPoint(hero,c.camp,c),c.camp);
+  const valid={x:c.camp.x+20,y:c.camp.y};assert.deepStrictEqual(world.safeLandPoint(valid,c.camp,c),valid);
+});
+test('legacy migration excludes invalid and water entities',()=>{
+  const c=world.createConfig(options),valid={uid:'valid',x:c.camp.x+30,y:c.camp.y},entities=[valid,{uid:'nan',x:NaN,y:4},{uid:'outside',x:c.size+1,y:c.cy},{uid:'water',x:0,y:0}];
+  assert.deepStrictEqual(world.sanitizeLegacyEntities(entities,c),[valid]);
+});
+console.log(`\n${passed}/23 sector world tests passed.`);

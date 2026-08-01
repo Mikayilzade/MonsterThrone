@@ -47,6 +47,27 @@
     return 'meadow';
   }
   function isLand(x,y,options){return !['water','inlandwater'].includes(terrainAt(x,y,options));}
+  function hasValidLandPosition(entity,options={}){
+    if(!entity||!Number.isFinite(entity.x)||!Number.isFinite(entity.y))return false;
+    const c=createConfig(options);return entity.x>=0&&entity.y>=0&&entity.x<c.size&&entity.y<c.size&&isLand(entity.x,entity.y,c);
+  }
+  function safeLandPoint(point,fallback,options={}){
+    if(hasValidLandPosition(point,options))return {x:point.x,y:point.y};
+    if(hasValidLandPosition(fallback,options))return {x:fallback.x,y:fallback.y};
+    const c=createConfig(options);return {x:c.camp.x,y:c.camp.y};
+  }
+  function sanitizeLegacyEntities(entities,options={}){
+    return (Array.isArray(entities)?entities:[]).filter(entity=>hasValidLandPosition(entity,options));
+  }
+  function partitionLandEntities(entities,options={}){
+    const valid=[],removed=[];for(const entity of Array.isArray(entities)?entities:[])(hasValidLandPosition(entity,options)?valid:removed).push(entity);
+    return {valid,removed};
+  }
+  function recordBiomeVisit(visited,biome){
+    if(!BIOMES[biome])return false;
+    if(visited instanceof Set){if(visited.has(biome))return false;visited.add(biome);return true;}
+    if(!Array.isArray(visited)||visited.includes(biome))return false;visited.push(biome);return true;
+  }
   function pathIsLand(x,y,nx,ny,options={}){
     const steps=Math.max(1,Math.ceil(Math.hypot(nx-x,ny-y)/24));
     for(let i=1;i<=steps;i++){const t=i/steps;if(!isLand(x+(nx-x)*t,y+(ny-y)*t,options))return false;}
@@ -124,5 +145,5 @@
     restore(data={}){if(data.version&&data.version!==VERSION)throw new Error('Unsupported sector save version');if(data.seed&&data.seed!==this.config.seed)throw new Error('Sector save seed mismatch');this.saved=new Map(Object.entries(data.sectors||{}).map(([id,s])=>[id,clone(s)]));this.loaded.clear();this.active.clear();this.dirty.clear();this.current=null;this.visited=new Set(data.visited||[]);this.visitedBiomes=new Set(data.visitedBiomes||[]);}
     tickDistant(){return 0;} // Stable extension point for a later coarse population simulation.
   }
-  return {VERSION,DEFAULTS,BIOMES,ALLOWED_BY_SPECIES,RESOURCE_BIOMES,createConfig,sectorCoords,terrainAt,isLand,pathIsLand,resolveLandMove,generateSector,SectorManager};
+  return {VERSION,DEFAULTS,BIOMES,ALLOWED_BY_SPECIES,RESOURCE_BIOMES,createConfig,sectorCoords,terrainAt,isLand,hasValidLandPosition,safeLandPoint,sanitizeLegacyEntities,partitionLandEntities,recordBiomeVisit,pathIsLand,resolveLandMove,generateSector,SectorManager};
 });

@@ -81,7 +81,7 @@ const terrainColor={water:'#063444',inlandwater:'#164f59',coast:'#a99362',meadow
 
 function rememberBiome(biome){
   hero.knowledge.biomes=hero.knowledge.biomes||[];
-  if(!hero.knowledge.biomes.includes(biome)){hero.knowledge.biomes.push(biome);toast(`📖 Открыт биом: ${SECTORS.BIOMES[biome]}`);}
+  if(SECTORS.recordBiomeVisit(hero.knowledge.biomes,biome))toast(`📖 Открыт биом: ${SECTORS.BIOMES[biome]}`);
 }
 function persistActiveSectors(){
   const live=[...world.objects,...world.enemies,...world.carcasses];
@@ -143,9 +143,10 @@ function loadGame(key='auto'){
     world.time=d.world.time;world.day=d.world.day;
     if(d.world.sectorWorld){sectorManager.restore(d.world.sectorWorld);refreshSectorWorld(true);}
     else{
+      const safeHero=SECTORS.safeLandPoint(hero,world.camp,sectorConfig);hero.x=safeHero.x;hero.y=safeHero.y;
       sectorManager.restore({seed:sectorConfig.seed});sectorManager.update(hero.x,hero.y);
       const legacy=[...(d.world.objects||[]),...(d.world.enemies||[]),...(d.world.carcasses||[])];
-      legacy.forEach((e,i)=>sectorManager.upsert({...e,uid:e.uid||e.id||`legacy:${e.kind||'entity'}:${i}`,kind:e.kind||(e.type?'creature':'carcass')}));refreshSectorWorld(true);
+      SECTORS.sanitizeLegacyEntities(legacy,sectorConfig).forEach((e,i)=>sectorManager.upsert({...e,uid:e.uid||e.id||`legacy:${e.kind||'entity'}:${i}`,kind:e.kind||(e.type?'creature':'carcass')}));refreshSectorWorld(true);
     }
     target=null;selectedCarcass=null;return true;
   }catch(e){console.error(e);return false;}
