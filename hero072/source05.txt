@@ -39,12 +39,12 @@ function update(dt){
   if(dodgeTime>0){dodgeTime-=dt;moveHero(dodgeVX*dt,dodgeVY*dt);} else moveHero(v.x*speed*dt,v.y*speed*dt);refreshSectorWorld();
   updateEnemies(dt);updateTraps();updateCarcasses(dt);updateHud();updateQuest();
 }
-function moveHero(dx,dy){let nx=hero.x+dx,ny=hero.y+dy;if(!Number.isFinite(nx)||!Number.isFinite(ny))return;const t=terrainAt(nx,ny);if(t!=='water'&&t!=='inlandwater'){hero.x=nx;hero.y=ny;}else{const a=Math.atan2(ny-world.cy,nx-world.cx),r=world.radius-6;hero.x=world.cx+Math.cos(a)*r;hero.y=world.cy+Math.sin(a)*r;}}
-function updateEnemies(dt){for(const e of world.enemies){if(e.dead)continue;const d=ENEMY_TYPES[e.type];e.attackCd=Math.max(0,e.attackCd-dt);e.slow=Math.max(0,e.slow-dt);e.think-=dt;let toHero=dist(e,hero),speed=d.speed*(e.slow>0?.42:1);if(hero.repellent>0&&e.type==='tick'&&toHero<190){const a=Math.atan2(e.y-hero.y,e.x-hero.x);e.x+=Math.cos(a)*speed*1.4*dt;e.y+=Math.sin(a)*speed*1.4*dt;continue;}
+function moveHero(dx,dy){const next=SECTORS.resolveLandMove(hero.x,hero.y,dx,dy,sectorConfig);hero.x=next.x;hero.y=next.y;}
+function updateEnemies(dt){for(const e of world.enemies){if(e.dead)continue;const ox=e.x,oy=e.y,d=ENEMY_TYPES[e.type];e.attackCd=Math.max(0,e.attackCd-dt);e.slow=Math.max(0,e.slow-dt);e.think-=dt;let toHero=dist(e,hero),speed=d.speed*(e.slow>0?.42:1);if(hero.repellent>0&&e.type==='tick'&&toHero<190){const a=Math.atan2(e.y-hero.y,e.x-hero.x);e.x+=Math.cos(a)*speed*1.4*dt;e.y+=Math.sin(a)*speed*1.4*dt;if(!SECTORS.isLand(e.x,e.y,sectorConfig)){e.x=ox;e.y=oy;}continue;}
     if((d.role==='predator'||d.role==='territorial'||d.role==='scavenger')&&toHero<d.aggro){e.state='attack';const a=Math.atan2(hero.y-e.y,hero.x-e.x);e.x+=Math.cos(a)*speed*dt;e.y+=Math.sin(a)*speed*dt;if(toHero<d.radius+hero.radius+8&&e.attackCd<=0){e.attackCd=1.0;heroHit(e);}}
     else if(d.role==='grazer'&&toHero<90){e.state='flee';const a=Math.atan2(e.y-hero.y,e.x-hero.x);e.x+=Math.cos(a)*speed*1.15*dt;e.y+=Math.sin(a)*speed*1.15*dt;}
     else{e.state='wander';if(e.think<=0){e.think=rnd(4,1.2);e.dir+=rnd(2,-2);}e.x+=Math.cos(e.dir)*speed*.35*dt;e.y+=Math.sin(e.dir)*speed*.35*dt;}
-    if(['water','inlandwater'].includes(terrainAt(e.x,e.y))||!Number.isFinite(e.x)||!Number.isFinite(e.y)){const a=Math.atan2(world.cy-e.y,world.cx-e.x);e.x+=Math.cos(a)*speed*2*dt;e.y+=Math.sin(a)*speed*2*dt;}
+    if(!Number.isFinite(e.x)||!Number.isFinite(e.y)||!SECTORS.isLand(e.x,e.y,sectorConfig)){e.x=ox;e.y=oy;e.dir+=Math.PI;}
     if(d.role==='predator'){const prey=nearest(world.enemies.filter(x=>!x.dead&&x!==e&&ENEMY_TYPES[x.type].role==='grazer'),e,100);if(prey&&Math.random()<dt*.7){prey.hp-=d.attack*.5;if(prey.hp<=0)killEnemy(prey,'monster');}}
   }}
 function updateTraps(){

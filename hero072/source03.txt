@@ -74,7 +74,7 @@ function killEnemy(e,killer){
   }
   const parts=carcassYield(e.type);
   world.carcasses.push({kind:'carcass',x:e.x,y:e.y,type:e.type,age:0,parts,initialParts:parts.length,level:d.level});
-  setTimeout(()=>{const idx=world.enemies.indexOf(e);if(idx>=0)world.enemies.splice(idx,1);spawnEnemy(e.type);},2000);
+  setTimeout(()=>{const idx=world.enemies.indexOf(e);if(idx>=0)world.enemies.splice(idx,1);},2000);
 }
 function heroHit(e){if(hero.respawning||dodgeTime>0)return;const d=ENEMY_TYPES[e.type],dmg=Math.max(1,Math.round(d.attack*rnd(1.15,.85)-hero.defense));hero.hp-=dmg;floatDamage(hero.x,hero.y,'-'+dmg,'in');combat(`${d.name} → Ты: ${dmg}`,'in');if(hero.hp<=0)die(d.name);}
 function die(reason){if(hero.respawning)return;hero.respawning=true;hero.deaths++;hero.tempPower=0;hero.tempPowerTime=0;world.paused=true;$('deathText').textContent=`Тебя убил ${reason}. Это уже смерть №${hero.deaths}.`;$('deathScreen').classList.remove('hidden');let n=3;$('respawnText').textContent=`Возвращение через ${n}…`;const t=setInterval(()=>{n--;if(n>0)$('respawnText').textContent=`Возвращение через ${n}…`;else{clearInterval(t);hero.x=world.camp.x+40;hero.y=world.camp.y;hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;hero.hunger=Math.max(45,hero.hunger);hero.respawning=false;world.paused=false;$('deathScreen').classList.add('hidden');saveGame(true);}},700);}
@@ -169,4 +169,4 @@ function interactionText(){
   if(nearObject.kind==='trap')return `E 🪤 Снять установленную ловушку`;
   if(nearObject.kind==='carcass'){
     ensureCarcass(nearObject);const fr=carcassFreshness(nearObject);
-    return `E 🔪 Разделать (${nearObject.parts.length} частей) · F 🍖 съесть 
+    return `E 🔪 Разделать (${nearObject.parts.length} частей) · F 🍖 съесть

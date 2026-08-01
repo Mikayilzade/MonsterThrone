@@ -29,7 +29,20 @@ test('installed and disarmed trap state survives',()=>{
 test('visited sectors survive save/load',()=>{const m=new world.SectorManager(options);m.update(8400,8400);m.update(11000,8400);const copy=new world.SectorManager(options);copy.restore(m.serialize());assert.deepStrictEqual([...copy.visited].sort(),[...m.visited].sort());});
 test('long travel keeps detailed and loaded object counts bounded',()=>{
   const m=new world.SectorManager(options);let peak=0;for(let x=1000;x<15800;x+=160)m.update(x,8400),peak=Math.max(peak,m.debug().activeObjects);
-  assert(m.debug().activeSectors<=9);assert(m.debug().loadedSectors<=25);assert(peak<250);
+  assert(m.debug().activeSectors<=9);assert(m.debug().loadedSectors<=25);assert.strictEqual(m.debug().savedSectors,0);assert(peak<250);
 });
 test('NaN coordinates are rejected',()=>{const m=new world.SectorManager(options);assert.strictEqual(m.update(NaN,1),false);assert.strictEqual(m.upsert({uid:'bad',x:NaN,y:1}),false);});
-console.log(`\n${passed}/10 sector world tests passed.`);
+test('restore resets current sector and immediately hydrates restored data',()=>{
+  const m=new world.SectorManager(options);m.update(8400,8400);m.upsert({uid:'trap:restore',kind:'trap',x:8420,y:8420,armed:true});const save=m.serialize();
+  m.update(12000,8400);m.restore(save);assert.strictEqual(m.current,null);m.update(8400,8400);assert.strictEqual(m.activeEntities().filter(e=>e.uid==='trap:restore').length,1);
+});
+test('moving an entity between sectors never leaves a duplicate behind',()=>{
+  const m=new world.SectorManager(options);m.update(8400,8400);m.upsert({uid:'moving',kind:'trap',x:8420,y:8420});m.upsert({uid:'moving',kind:'trap',x:9060,y:8420});
+  let count=0;for(const s of m.loaded.values())count+=s.entities.filter(e=>e.uid==='moving').length;for(const s of m.saved.values())count+=s.entities.filter(e=>e.uid==='moving').length;assert.strictEqual(count,1);
+});
+test('blocked water movement never teleports to the distant shore',()=>{
+  const c=world.createConfig(options),x=c.cx+c.radius-2,y=c.cy,result=world.resolveLandMove(x,y,100,0,c);
+  assert.deepStrictEqual(result,{x,y,moved:false});assert(Math.hypot(result.x-x,result.y-y)<1);
+});
+test('invalid movement keeps the last finite position',()=>{const c=world.createConfig(options);assert.deepStrictEqual(world.resolveLandMove(10,20,NaN,1,c),{x:10,y:20,moved:false});});
+console.log(`\n${passed}/14 sector world tests passed.`);

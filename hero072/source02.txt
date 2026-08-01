@@ -89,6 +89,7 @@ function persistActiveSectors(){
   for(const id of sectorManager.active){
     const sector=sectorManager.loaded.get(id);if(!sector)continue;
     sector.entities=live.filter(e=>SECTORS.sectorCoords(e.x,e.y,sectorConfig).sx===sector.sx&&SECTORS.sectorCoords(e.x,e.y,sectorConfig).sy===sector.sy);
+    sectorManager.markDirty(id);
   }
 }
 function hydrateCreature(e){
@@ -145,7 +146,11 @@ function loadGame(key='auto'){
     Object.assign(hero,RULES.migrateHero(d.hero));ensureHeroFields();recomputeDerived(false);
     world.time=d.world.time;world.day=d.world.day;
     if(d.world.sectorWorld){sectorManager.restore(d.world.sectorWorld);refreshSectorWorld(true);}
-    else{world.objects=d.world.objects||[];world.enemies=d.world.enemies||[];world.carcasses=(d.world.carcasses||[]).map(ensureCarcass);}
+    else{
+      sectorManager.restore({seed:sectorConfig.seed});sectorManager.update(hero.x,hero.y);
+      const legacy=[...(d.world.objects||[]),...(d.world.enemies||[]),...(d.world.carcasses||[])];
+      legacy.forEach((e,i)=>sectorManager.upsert({...e,uid:e.uid||e.id||`legacy:${e.kind||'entity'}:${i}`,kind:e.kind||(e.type?'creature':'carcass')}));refreshSectorWorld(true);
+    }
     target=null;selectedCarcass=null;return true;
   }catch(e){console.error(e);return false;}
 }
