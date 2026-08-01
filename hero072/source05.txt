@@ -14,8 +14,14 @@ const fauna=()=>{let out='';for(const [type,k] of Object.entries(hero.knowledge.
 const discoveries=()=>{const biomes=(hero.knowledge.biomes||[]).length?`<div class="sectiontitle">Исследованные биомы</div>${hero.knowledge.biomes.map(id=>`<div class="bookentry"><h3>${SECTORS.BIOMES[id]||id}</h3><div>Первое посещение записано в Книге мира.</div></div>`).join('')}`:'';const reactions=hero.knowledge.reactions.length?hero.knowledge.reactions.map((x,i)=>`<div class="bookentry"><h3>Открытие ${i+1}</h3><div>${x}</div></div>`).join(''):'<div class="empty">Подтверждённых комбинаций пока нет. Нагревай, суши, измельчай, смешивай, пропитывай и сжигай материалы.</div>';const notes=hero.knowledge.experimentNotes.length?`<div class="sectiontitle">Наблюдения</div>${hero.knowledge.experimentNotes.map(x=>`<div class="bookentry"><div>${x}</div></div>`).join('')}`:'';inner.innerHTML=biomes+reactions+notes;};
 body.querySelectorAll('[data-book-tab]').forEach(b=>b.onclick=()=>{body.querySelectorAll('[data-book-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');({flora,fauna,discoveries})[b.dataset.bookTab]();});flora();}
 
-function togglePause(force){if(hero.respawning)return;world.paused=force!==undefined?force:!world.paused;$('pauseScreen').classList.toggle('hidden',!world.paused);if(world.paused)saveGame(true,'auto');}
-$('pauseBtn').onclick=()=>togglePause();$('resumeBtn').onclick=()=>togglePause(false);
+let systemMenuReturnPaused=false,saveManagerReturnSystem=false;
+function showPauseIndicator(){ $('pauseScreen').classList.toggle('hidden',!world.paused||!$('systemMenu').classList.contains('hidden')||!$('saveManager').classList.contains('hidden')); }
+function togglePause(force){if(hero.respawning)return;world.paused=force!==undefined?force:!world.paused;showPauseIndicator();if(world.paused)saveGame(true,'auto');}
+function openSystemMenu(){if(hero.respawning)return;systemMenuReturnPaused=world.paused;world.paused=true;$('pauseScreen').classList.add('hidden');$('systemMenu').classList.remove('hidden');}
+function closeSystemMenu(){ $('systemMenu').classList.add('hidden');world.paused=systemMenuReturnPaused;showPauseIndicator(); }
+function handlePauseKey(){if(!$('saveManager').classList.contains('hidden'))return closeSaveManager();if(!$('systemMenu').classList.contains('hidden'))return closeSystemMenu();togglePause();}
+function handleEscapeKey(){if(!$('saveManager').classList.contains('hidden'))return closeSaveManager();if(!$('systemMenu').classList.contains('hidden'))return closeSystemMenu();if(!$('panel').classList.contains('hidden'))return closePanel();togglePause();}
+$('pauseBtn').onclick=()=>togglePause();$('resumeBtn').onclick=()=>togglePause(false);$('systemMenuBtn').onclick=openSystemMenu;$('pauseSystemBtn').onclick=openSystemMenu;$('systemMenuClose').onclick=closeSystemMenu;
 $('saveBtn').onclick=()=>saveGame(false,'quick');
 if($('saveSlotsBtn'))$('saveSlotsBtn').onclick=()=>openSaveManager('save',false);
 if($('loadSlotsBtn'))$('loadSlotsBtn').onclick=()=>openSaveManager('load',false);
@@ -24,7 +30,7 @@ if($('saveManagerClose'))$('saveManagerClose').onclick=closeSaveManager;
 if($('importSaveBtn'))$('importSaveBtn').onclick=()=>$('importSaveInput').click();
 if($('importSaveInput'))$('importSaveInput').onchange=e=>{const f=e.target.files[0];if(f)importSaveFile(f);e.target.value='';};
 $('newFromPauseBtn').onclick=()=>{if(confirm('Начать новый мир? Существующие слоты сохранений останутся.'))location.reload();};
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&!$('hud').classList.contains('hidden')){world.paused=true;$('pauseScreen').classList.remove('hidden');saveGame(true,'auto');}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&!$('hud').classList.contains('hidden')){world.paused=true;showPauseIndicator();saveGame(true,'auto');}});
 
 function update(dt){
   if(world.paused||hero.respawning)return;
@@ -80,7 +86,7 @@ function renderHotbar(){const bar=$('hotbar');bar.innerHTML='';hero.hotbar.forEa
 function updateQuestOnItem(id){if(hero.quest===0&&['root','bluecap','bloodleaf','ghostfern'].includes(id))hero.quest=1;if(hero.quest===1&&(hero.inv.simple_trap||0)>=1)hero.quest=2;}
 function updateQuest(){const data=[['Изучи живое','Найди растение, положи его в сумку и реши, что с ним делать.'],['Подготовься','Сделай ловушку или повязку. Крафт открыт клавишей C.'],['Проверь силу мира','Выбери существо кликом. Попробуй ловушку, бой или просто наблюдение.'],['Экспериментируй','Собирай материалы и проверяй неожиданные сочетания. Книга запомнит подтверждённые свойства.']];if(hero.quest===2&&Object.values(hero.knowledge.enemies).some(k=>k.fought||k.killed))hero.quest=3;$('questTitle').textContent=data[hero.quest][0];$('questText').textContent=data[hero.quest][1];}
 function combat(text,kind,details=''){const log=$('combatLog');log.classList.remove('hidden');const d=document.createElement('div');d.className=kind;if(details)d.innerHTML=`<details><summary>${text}</summary><small>${details}</small></details>`;else d.textContent=text;log.prepend(d);while(log.children.length>5)log.lastChild.remove();}
-function toast(text,bad=false){const d=document.createElement('div');d.className='toast'+(bad?' bad':'');d.textContent=text;$('toasts').appendChild(d);setTimeout(()=>d.remove(),3600);}
+function toast(text,bad=false){const box=$('toasts'),d=document.createElement('div');d.className='toast'+(bad?' bad':'');d.textContent=text;box.appendChild(d);while(box.children.length>4)box.firstChild.remove();setTimeout(()=>d.remove(),3600);}
 function floatDamage(wx,wy,text,kind){const c=camera(),d=document.createElement('div');d.className='damage '+kind;d.textContent=text;d.style.left=(wx-c.x)+'px';d.style.top=(wy-c.y-18)+'px';document.body.appendChild(d);setTimeout(()=>d.remove(),950);}
 
 function camera(){return {x:clamp(hero.x-W/2,0,world.size-W),y:clamp(hero.y-H/2,0,world.size-H)};}

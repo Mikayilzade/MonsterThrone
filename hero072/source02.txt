@@ -72,7 +72,7 @@ function partSummary(c){
   const counts={}; for(const id of c.parts)counts[id]=(counts[id]||0)+1;
   return Object.entries(counts).map(([id,n])=>`${ITEMS[id]?.icon||'•'} ${ITEMS[id]?.name||id} ×${n}`).join(' · ')||'полезных частей не осталось';
 }
-function maxCraftable(r){return RULES.maxCraftable(hero.inv,r);}
+function maxCraftable(r){return RULES.craftLimit(hero.inv,r);}
 function canCraftAt(r){return r.station!=='camp'||dist(hero,world.camp)<=125;}
 function missingMaterials(r){return Object.entries(r.needs).filter(([id,n])=>(hero.inv[id]||0)<n).map(([id,n])=>`${ITEMS[id].name}: ${hero.inv[id]||0}/${n}`);}
 function hash2(x,y){let h=(x*374761393+y*668265263)>>>0;h=(h^(h>>13))*1274126177>>>0;return ((h^(h>>16))>>>0)/4294967295;}
@@ -174,10 +174,11 @@ updateContinue();
 let saveManagerMode='load',saveManagerFromStart=false;
 function openSaveManager(mode='load',fromStart=false){
   saveManagerMode=mode;saveManagerFromStart=fromStart;
+  saveManagerReturnSystem=!$('systemMenu').classList.contains('hidden');if(saveManagerReturnSystem)$('systemMenu').classList.add('hidden');
   $('saveManagerTitle').textContent=mode==='save'?'Сохранить игру':'Загрузить игру';
   $('saveManager').classList.remove('hidden');renderSaveSlots();
 }
-function closeSaveManager(){$('saveManager').classList.add('hidden');}
+function closeSaveManager(){$('saveManager').classList.add('hidden');if(saveManagerReturnSystem)$('systemMenu').classList.remove('hidden');saveManagerReturnSystem=false;}
 function renderSaveSlots(){
   const box=$('saveSlots');if(!box)return;box.innerHTML='';
   for(const key of ['auto','quick','slot1','slot2','slot3']){
@@ -188,7 +189,7 @@ function renderSaveSlots(){
     if(saveManagerMode==='load'&&!info)btn.disabled=true;
     btn.onclick=()=>{
       if(saveManagerMode==='save'){saveGame(false,key);renderSaveSlots();}
-      else{closeSaveManager();if(saveManagerFromStart)startGame(key);else{loadGame(key);world.paused=false;$('pauseScreen').classList.add('hidden');toast('Сохранение загружено');}}
+      else{const returnPaused=saveManagerReturnSystem?systemMenuReturnPaused:false;$('saveManager').classList.add('hidden');$('systemMenu').classList.add('hidden');saveManagerReturnSystem=false;if(saveManagerFromStart)startGame(key);else{loadGame(key);world.paused=returnPaused;showPauseIndicator();toast('Сохранение загружено');}}
     };
     box.appendChild(row);
   }

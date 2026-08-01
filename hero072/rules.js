@@ -74,6 +74,15 @@
     return Number.isFinite(max)?Math.max(0,max):0;
   }
 
+  function craftLimit(inventory,recipe){
+    if(recipe.unique&&(inventory[recipe.id]||0)>0)return 0;
+    if(recipe.id==='bone_tip'){
+      if((inventory.improved_spear||0)>0||(inventory.bone_tip||0)>0)return 0;
+      return Math.min(1,maxCraftable(inventory,recipe));
+    }
+    return maxCraftable(inventory,recipe);
+  }
+
   function applyRecipe(inventory,recipe,qty=1){
     const q=Math.max(1,Math.floor(Number(qty)||1));
     const max=maxCraftable(inventory,recipe);
@@ -108,5 +117,5 @@
     return next;
   }
 
-  return {WEAPONS,masteryBonus,readinessMultiplier,nextSkillThreshold,combatProfile,maxCraftable,applyRecipe,migrateHero};
+  return {WEAPONS,masteryBonus,readinessMultiplier,nextSkillThreshold,combatProfile,maxCraftable,craftLimit,applyRecipe,migrateHero};
 });

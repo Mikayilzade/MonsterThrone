@@ -1,4 +1,4 @@
-sk=hero.skills[id],read=Math.round(sk.readiness);let effect='';
+ sk=hero.skills[id],read=Math.round(sk.readiness);let effect='';
       if(id==='survival')effect=`еда и лечение +${Math.round((skillFactor(id,.005,.001)-1)*100)}%; голод расходуется медленнее`;
       if(id==='trapping')effect=`урон и удержание ловушек +${Math.round((skillFactor(id,.004,.0007)-1)*100)}%`;
       if(id==='butchery')effect=`усвоение добычи +${Math.round((butcheryFactor()-1)*100)}%${hero.inv.bone_knife?' · костяной нож даёт ещё +12%':''}`;

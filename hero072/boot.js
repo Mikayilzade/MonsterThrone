@@ -5,9 +5,10 @@
     if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`);
     return r.text();
   }))).then(parts => {
-    // Source chunks intentionally split some tokens; trim only their outer
-    // line breaks so a static server and every browser rebuild the exact file.
-    const source = parts.map(part => part.trim()).join('');
+    // Chunks split identifiers and, in one place, preserve a significant
+    // trailing space. Remove line breaks only; String.trim() would turn
+    // `const ` + `sk` into the runtime error `constsk`.
+    const source = parts.map(part => part.replace(/^[\r\n]+|[\r\n]+$/g,'')).join('');
     Function(`${source}\n//# sourceURL=hero072/game.js`)();
   }).catch(error => {
     console.error(error);

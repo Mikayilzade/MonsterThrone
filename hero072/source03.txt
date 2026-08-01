@@ -15,7 +15,8 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyI')togglePanel('inventory');
   if(e.code==='KeyC')togglePanel('craft');
   if(e.code==='KeyJ')togglePanel('book');
-  if(e.code==='KeyP'||e.code==='Escape')togglePause();
+  if(e.code==='KeyP')handlePauseKey();
+  if(e.code==='Escape')handleEscapeKey();
   if(e.code==='ShiftLeft'||e.code==='ShiftRight')dodge();
   if(/^Digit[1-8]$/.test(e.code)){hero.selected=+e.code.slice(-1)-1;useHotbar(hero.selected);renderHotbar();}
 });
@@ -77,7 +78,7 @@ function killEnemy(e,killer){
   setTimeout(()=>{const idx=world.enemies.indexOf(e);if(idx>=0)world.enemies.splice(idx,1);},2000);
 }
 function heroHit(e){if(hero.respawning||dodgeTime>0)return;const d=ENEMY_TYPES[e.type],dmg=Math.max(1,Math.round(d.attack*rnd(1.15,.85)-hero.defense));hero.hp-=dmg;floatDamage(hero.x,hero.y,'-'+dmg,'in');combat(`${d.name} → Ты: ${dmg}`,'in');if(hero.hp<=0)die(d.name);}
-function die(reason){if(hero.respawning)return;hero.respawning=true;hero.deaths++;hero.tempPower=0;hero.tempPowerTime=0;world.paused=true;$('deathText').textContent=`Тебя убил ${reason}. Это уже смерть №${hero.deaths}.`;$('deathScreen').classList.remove('hidden');let n=3;$('respawnText').textContent=`Возвращение через ${n}…`;const t=setInterval(()=>{n--;if(n>0)$('respawnText').textContent=`Возвращение через ${n}…`;else{clearInterval(t);hero.x=world.camp.x+40;hero.y=world.camp.y;hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;hero.hunger=Math.max(45,hero.hunger);hero.respawning=false;world.paused=false;$('deathScreen').classList.add('hidden');saveGame(true);}},700);}
+function die(reason){if(hero.respawning)return;hero.respawning=true;hero.deaths++;hero.tempPower=0;hero.tempPowerTime=0;world.paused=true;$('pauseScreen').classList.add('hidden');$('deathText').textContent=`Причина: ${reason}. Смерть №${hero.deaths}. Ничего из постоянного имущества не потеряно.`;$('deathScreen').classList.remove('hidden');let n=3;$('respawnText').textContent=`Возвращение в лагерь через ${n}…`;const t=setInterval(()=>{n--;if(n>0)$('respawnText').textContent=`Возвращение в лагерь через ${n}…`;else{clearInterval(t);hero.x=world.camp.x+40;hero.y=world.camp.y;hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;hero.hunger=Math.max(45,hero.hunger);hero.respawning=false;world.paused=false;$('deathScreen').classList.add('hidden');saveGame(true);}},700);}
 
 function pickupNearby(){
   if(world.paused||hero.respawning)return;findNear();if(!nearObject)return toast('Рядом нечего подобрать.');
