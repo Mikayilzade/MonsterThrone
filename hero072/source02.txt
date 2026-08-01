@@ -86,11 +86,7 @@ function rememberBiome(biome){
 function persistActiveSectors(){
   const live=[...world.objects,...world.enemies,...world.carcasses];
   for(const entity of live){if(!entity.uid)entity.uid=`player:${entity.kind||'carcass'}:${world.time}:${Math.random().toString(36).slice(2)}`;}
-  for(const id of sectorManager.active){
-    const sector=sectorManager.loaded.get(id);if(!sector)continue;
-    sector.entities=live.filter(e=>SECTORS.sectorCoords(e.x,e.y,sectorConfig).sx===sector.sx&&SECTORS.sectorCoords(e.x,e.y,sectorConfig).sy===sector.sy);
-    sectorManager.markDirty(id);
-  }
+  sectorManager.replaceActiveEntities(live);
 }
 function hydrateCreature(e){
   const d=ENEMY_TYPES[e.type];if(!d)return e;e.id=e.uid;e.hp=Number.isFinite(e.hp)?e.hp:d.hp;e.maxHp=e.maxHp||d.hp;e.level=e.level||d.level;e.state=e.state||'wander';e.vx=e.vx||0;e.vy=e.vy||0;e.dir=Number.isFinite(e.dir)?e.dir:hash2(e.x,e.y)*TAU;e.think=e.think||0;e.attackCd=e.attackCd||0;e.slow=e.slow||0;return e;

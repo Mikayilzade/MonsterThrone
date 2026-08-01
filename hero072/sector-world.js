@@ -47,12 +47,17 @@
     return 'meadow';
   }
   function isLand(x,y,options){return !['water','inlandwater'].includes(terrainAt(x,y,options));}
+  function pathIsLand(x,y,nx,ny,options={}){
+    const steps=Math.max(1,Math.ceil(Math.hypot(nx-x,ny-y)/24));
+    for(let i=1;i<=steps;i++){const t=i/steps;if(!isLand(x+(nx-x)*t,y+(ny-y)*t,options))return false;}
+    return true;
+  }
   function resolveLandMove(x,y,dx,dy,options={}){
     if(![x,y,dx,dy].every(Number.isFinite))return {x,y,moved:false};
     const nx=x+dx,ny=y+dy;
-    if(isLand(nx,ny,options))return {x:nx,y:ny,moved:true};
-    if(dx!==0&&isLand(nx,y,options))return {x:nx,y,moved:true};
-    if(dy!==0&&isLand(x,ny,options))return {x,y:ny,moved:true};
+    if(pathIsLand(x,y,nx,ny,options))return {x:nx,y:ny,moved:true};
+    if(dx!==0&&pathIsLand(x,y,nx,y,options))return {x:nx,y,moved:true};
+    if(dy!==0&&pathIsLand(x,y,x,ny,options))return {x,y:ny,moved:true};
     return {x,y,moved:false};
   }
 
@@ -97,16 +102,27 @@
     }
     activeEntities(kind){const out=[];for(const id of this.active){const sector=this.loaded.get(id);if(sector)for(const entity of sector.entities)if(!kind||entity.kind===kind)out.push(entity);}return out;}
     markDirty(id){if(this.loaded.has(id))this.dirty.add(id);}
-    remove(uid){for(const [id,sector] of this.loaded){const i=sector.entities.findIndex(e=>e.uid===uid);if(i>=0){sector.entities.splice(i,1);this.dirty.add(id);return true;}}for(const [id,sector] of this.saved){const i=sector.entities.findIndex(e=>e.uid===uid);if(i>=0){sector.entities.splice(i,1);return true;}}return false;}
+    remove(uid){
+      let removed=false;
+      for(const [id,sector] of this.loaded){const next=sector.entities.filter(e=>e.uid!==uid);if(next.length!==sector.entities.length){sector.entities=next;this.dirty.add(id);removed=true;}}
+      for(const sector of this.saved.values()){const next=sector.entities.filter(e=>e.uid!==uid);if(next.length!==sector.entities.length){sector.entities=next;removed=true;}}
+      return removed;
+    }
     upsert(entity){
       if(!entity||!entity.uid||!Number.isFinite(entity.x)||!Number.isFinite(entity.y))return false;
       this.remove(entity.uid);const c=sectorCoords(entity.x,entity.y,this.config),id=key(c.sx,c.sy),sector=this.getSector(c.sx,c.sy);
       sector.entities.push(clone(entity));this.dirty.add(id);return true;
     }
+    replaceActiveEntities(entities){
+      const valid=entities.filter(e=>e&&e.uid&&Number.isFinite(e.x)&&Number.isFinite(e.y)),groups=new Map();
+      for(const entity of valid){const c=sectorCoords(entity.x,entity.y,this.config),id=key(c.sx,c.sy);if(!groups.has(id))groups.set(id,[]);groups.get(id).push(clone(entity));}
+      for(const id of this.active){const sector=this.loaded.get(id);if(sector){sector.entities=groups.get(id)||[];this.dirty.add(id);groups.delete(id);}}
+      for(const group of groups.values())for(const entity of group)this.upsert(entity);
+    }
     debug(){return {activeSectors:this.active.size,loadedSectors:this.loaded.size,savedSectors:this.saved.size,dirtySectors:this.dirty.size,activeObjects:this.activeEntities().length,visitedSectors:this.visited.size};}
-    serialize(){for(const id of this.dirty){const s=this.loaded.get(id);if(s)this.saved.set(id,clone(s));}return {version:VERSION,seed:this.config.seed,config:{size:this.config.size,radius:this.config.radius,sectorSize:this.config.sectorSize},sectors:Object.fromEntries(this.saved),visited:[...this.visited],visitedBiomes:[...this.visitedBiomes]};}
-    restore(data={}){if(data.seed&&data.seed!==this.config.seed)throw new Error('Sector save seed mismatch');this.saved=new Map(Object.entries(data.sectors||{}).map(([id,s])=>[id,clone(s)]));this.loaded.clear();this.active.clear();this.dirty.clear();this.current=null;this.visited=new Set(data.visited||[]);this.visitedBiomes=new Set(data.visitedBiomes||[]);}
+    serialize(){for(const id of this.dirty){const s=this.loaded.get(id);if(s)this.saved.set(id,clone(s));}return {version:VERSION,seed:this.config.seed,config:{size:this.config.size,radius:this.config.radius,sectorSize:this.config.sectorSize},sectors:Object.fromEntries([...this.saved].map(([id,s])=>[id,clone(s)])),visited:[...this.visited],visitedBiomes:[...this.visitedBiomes]};}
+    restore(data={}){if(data.version&&data.version!==VERSION)throw new Error('Unsupported sector save version');if(data.seed&&data.seed!==this.config.seed)throw new Error('Sector save seed mismatch');this.saved=new Map(Object.entries(data.sectors||{}).map(([id,s])=>[id,clone(s)]));this.loaded.clear();this.active.clear();this.dirty.clear();this.current=null;this.visited=new Set(data.visited||[]);this.visitedBiomes=new Set(data.visitedBiomes||[]);}
     tickDistant(){return 0;} // Stable extension point for a later coarse population simulation.
   }
-  return {VERSION,DEFAULTS,BIOMES,ALLOWED_BY_SPECIES,RESOURCE_BIOMES,createConfig,sectorCoords,terrainAt,isLand,resolveLandMove,generateSector,SectorManager};
+  return {VERSION,DEFAULTS,BIOMES,ALLOWED_BY_SPECIES,RESOURCE_BIOMES,createConfig,sectorCoords,terrainAt,isLand,pathIsLand,resolveLandMove,generateSector,SectorManager};
 });

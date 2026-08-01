@@ -40,9 +40,27 @@ test('moving an entity between sectors never leaves a duplicate behind',()=>{
   const m=new world.SectorManager(options);m.update(8400,8400);m.upsert({uid:'moving',kind:'trap',x:8420,y:8420});m.upsert({uid:'moving',kind:'trap',x:9060,y:8420});
   let count=0;for(const s of m.loaded.values())count+=s.entities.filter(e=>e.uid==='moving').length;for(const s of m.saved.values())count+=s.entities.filter(e=>e.uid==='moving').length;assert.strictEqual(count,1);
 });
+test('upsert removes every stale duplicate from loaded and saved sectors',()=>{
+  const m=new world.SectorManager(options);m.update(8400,8400);const duplicate={uid:'duplicate',kind:'trap',x:8420,y:8420};
+  m.getSector(13,13).entities.push({...duplicate});m.getSector(14,13).entities.push({...duplicate,x:9060});m.saved.set('saved-copy',{id:'saved-copy',sx:2,sy:2,entities:[{...duplicate,x:1300,y:1300}]});
+  m.upsert({...duplicate,x:9700});let count=0;for(const s of m.loaded.values())count+=s.entities.filter(e=>e.uid==='duplicate').length;for(const s of m.saved.values())count+=s.entities.filter(e=>e.uid==='duplicate').length;assert.strictEqual(count,1);
+});
+test('active entity crossing into a loaded neighbor is not dropped',()=>{
+  const m=new world.SectorManager(options);m.update(8400,8400);m.replaceActiveEntities([{uid:'crossing',kind:'creature',type:'wolf',x:9700,y:8420}]);
+  m.update(9700,8420);assert.strictEqual(m.activeEntities().filter(e=>e.uid==='crossing').length,1);
+});
 test('blocked water movement never teleports to the distant shore',()=>{
   const c=world.createConfig(options),x=c.cx+c.radius-2,y=c.cy,result=world.resolveLandMove(x,y,100,0,c);
   assert.deepStrictEqual(result,{x,y,moved:false});assert(Math.hypot(result.x-x,result.y-y)<1);
 });
 test('invalid movement keeps the last finite position',()=>{const c=world.createConfig(options);assert.deepStrictEqual(world.resolveLandMove(10,20,NaN,1,c),{x:10,y:20,moved:false});});
-console.log(`\n${passed}/14 sector world tests passed.`);
+test('movement cannot tunnel across a narrow inland water channel',()=>{
+  const c=world.createConfig(options),start={x:6360,y:1200},end={x:6460,y:1200};assert(world.isLand(start.x,start.y,c));assert(world.isLand(end.x,end.y,c));
+  assert.strictEqual(world.pathIsLand(start.x,start.y,end.x,end.y,c),false);assert.strictEqual(world.resolveLandMove(start.x,start.y,end.x-start.x,0,c).moved,false);
+});
+test('serialized snapshots do not alias later manager mutations',()=>{
+  const m=new world.SectorManager(options);m.update(8400,8400);m.upsert({uid:'snapshot',kind:'trap',x:8420,y:8420,armed:true});const save=m.serialize();m.upsert({uid:'snapshot',kind:'trap',x:8420,y:8420,armed:false});
+  const restored=new world.SectorManager(options);restored.restore(save);restored.update(8400,8400);assert.strictEqual(restored.activeEntities().find(e=>e.uid==='snapshot').armed,true);
+});
+test('restore rejects sector data from another generator version',()=>{const m=new world.SectorManager(options);assert.throws(()=>m.restore({version:'future',seed:options.seed}),/version/);});
+console.log(`\n${passed}/19 sector world tests passed.`);
