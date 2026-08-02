@@ -101,16 +101,29 @@
   <div id="systemMenu" class="modal-layer hidden">
     <div class="pausecard glass">
       <small>СИСТЕМНОЕ МЕНЮ</small>
-      <h2>Сохранение и загрузка</h2>
+      <h2>Настройки</h2>
       <p>Симуляция остановлена, пока открыто системное меню.</p>
-      <div class="startactions">
+      <div class="tabs system-tabs">
+        <button data-system-tab="game" class="active">Игра</button>
+        <button data-system-tab="controls">Управление</button>
+        <button data-system-tab="saves">Сохранения</button>
+      </div>
+      <section data-system-page="game" class="system-page">
+        <label class="setting"><input id="desktopTouchControls" type="checkbox"> Показывать экранные кнопки действий на ПК</label>
+      </section>
+      <section data-system-page="controls" class="system-page hidden">
+        <p class="binding-help">Выберите кнопку и нажмите клавишу. Escape отменяет, Backspace/Delete очищает.</p>
+        <div id="controlBindings" class="binding-list"></div>
+        <button id="resetBindings">Сбросить по умолчанию</button>
+      </section>
+      <section data-system-page="saves" class="system-page hidden"><div class="startactions">
         <button id="saveBtn">Быстро сохранить</button>
         <button id="saveSlotsBtn">Сохранить в слот…</button>
         <button id="loadSlotsBtn">Загрузить…</button>
         <button id="exportSaveBtn">Экспорт сейва</button>
         <button id="newFromPauseBtn">Новая игра</button>
-        <button id="systemMenuClose" class="primary">Закрыть</button>
-      </div>
+      </div></section>
+      <button id="systemMenuClose" class="primary">Закрыть</button>
     </div>
   </div>
 
@@ -143,6 +156,7 @@
   <script src="./rules.js"></script>
   <script src="./sector-world.js"></script>
   <script src="./mobile-controls.js"></script>
+  <script src="./control-bindings.js"></script>
   <script src="./boot.js"></script>
 </body>
 </html>

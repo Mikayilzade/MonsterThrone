@@ -94,6 +94,8 @@ function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight
 
 const SECTORS=window.MonsterThroneSectorWorld;
 const MOBILE=window.MonsterThroneMobile;
+const BINDINGS=window.MonsterThroneBindings;
+let controlBindings=BINDINGS.load(localStorage),rebindTarget=null;
 const sectorManager=new SECTORS.SectorManager({seed:'monster-throne-main-v08'}),sectorConfig=sectorManager.config;
 const world={size:sectorConfig.size,cx:sectorConfig.cx,cy:sectorConfig.cy,radius:sectorConfig.radius,camp:sectorConfig.camp,time:0,day:1,paused:false,objects:[],enemies:[],carcasses:[],damage:[],seed:sectorConfig.seed};
 const hero={x:world.camp.x+40,y:world.camp.y,radius:12,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
@@ -105,7 +107,7 @@ const hero={x:world.camp.x+40,y:world.camp.y,radius:12,hp:100,maxHp:100,stamina:
 let keys={},mouse={x:0,y:0,down:false,worldX:0,worldY:0};
 let target=null, selectedCarcass=null, nearObject=null, panelType=null, lastFrame=performance.now(), attackCd=0,dodgeCd=0,dodgeTime=0,dodgeVX=0,dodgeVY=0,autoSaveTimer=0;
 let mobileVec={x:0,y:0};
-let lastAimDirection={x:1,y:0},lastMobileAction='none',lastInputWasTouch=false,hotbarRenderKey='';
+let lastAimDirection={x:1,y:0},lastMobileAction='none',lastInputWasTouch=false,hotbarRenderKey='',lastSanctuaryToast=-Infinity;
 const CAMP_SAFE_RADIUS=260;
 
 
