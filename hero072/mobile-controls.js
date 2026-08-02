@@ -13,7 +13,11 @@
   function forwardTarget(enemies,origin,direction,range,minimumDot=.25){let best=null,bestScore=Infinity;const aim=normalizedDirection(direction.x,direction.y);for(const e of enemies){if(e.dead||!Number.isFinite(e.x)||!Number.isFinite(e.y))continue;const dx=e.x-origin.x,dy=e.y-origin.y,d=Math.hypot(dx,dy);if(!d||d>range)continue;const dot=(dx*aim.x+dy*aim.y)/d;if(dot<minimumDot)continue;const score=d+(1-dot)*range;if(score<bestScore){best=e;bestScore=score;}}return best;}
   function inSafeZone(point,camp,radius){return Number.isFinite(point.x)&&Number.isFinite(point.y)&&Math.hypot(point.x-camp.x,point.y-camp.y)<radius;}
   function ejectFromSafeZone(entity,camp,radius,padding=24){let dx=entity.x-camp.x,dy=entity.y-camp.y,l=Math.hypot(dx,dy);if(l>=radius)return false;if(!l){dx=1;dy=0;l=1;}entity.x=camp.x+dx/l*(radius+padding);entity.y=camp.y+dy/l*(radius+padding);entity.state='wander';entity.think=1;return true;}
+  function applySafeZoneBoundary(entity,camp,radius,margin=45,padding=28){
+    if(!entity||!Number.isFinite(entity.x)||!Number.isFinite(entity.y)||Math.hypot(entity.x-camp.x,entity.y-camp.y)>=radius+margin)return false;
+    ejectFromSafeZone(entity,camp,radius,padding);entity.state='wander';entity.dir=Math.atan2(entity.y-camp.y,entity.x-camp.x);return true;
+  }
   function canDamageHero(hero,worldTime,camp,radius){return !inSafeZone(hero,camp,radius)&&(hero.invulnerableUntil||0)<=worldTime;}
   function hotbarSignature(hero){return JSON.stringify([hero.selected,hero.hotbar,hero.equipment?.weapon,hero.hotbar.map(id=>id?(hero.inv[id]||0):0)]);}
-  return {bindPointerButtons,normalizedDirection,forwardTarget,inSafeZone,ejectFromSafeZone,canDamageHero,hotbarSignature,clamp};
+  return {bindPointerButtons,normalizedDirection,forwardTarget,inSafeZone,ejectFromSafeZone,applySafeZoneBoundary,canDamageHero,hotbarSignature,clamp};
 });

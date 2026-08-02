@@ -17,4 +17,9 @@ test('pointer confirmation fires a button once and suppresses the compatibility 
   mobile.bindPointerButtons(root);for(const fn of listeners.pointerdown)fn(event('pointerdown'));assert(classes.has('pressed'));for(const fn of listeners.pointerup)fn(event('pointerup'));assert(!classes.has('pressed'));assert.strictEqual(actions,1);
   const native=event('click',1);for(const fn of listeners.click)fn(native);if(!native.blocked)actions++;assert.strictEqual(actions,1);
 });
-console.log(`\n${passed}/8 mobile control tests passed.`);
+test('hero in camp only affects creatures near the safe-zone boundary',()=>{
+  const camp={x:100,y:100},hero={x:120,y:100},wolf={x:350,y:100,state:'attack'},far={x:900,y:700,state:'hunt',dir:1.25},before={x:900,y:700,state:'hunt',dir:1.25};
+  assert(mobile.inSafeZone(hero,camp,260));assert(mobile.applySafeZoneBoundary(wolf,camp,260,45,28));assert(!mobile.inSafeZone(wolf,camp,260));assert.strictEqual(wolf.state,'wander');
+  assert.strictEqual(mobile.applySafeZoneBoundary(far,camp,260,45,28),false);assert.deepStrictEqual(far,before);
+});
+console.log(`\n${passed}/9 mobile control tests passed.`);
