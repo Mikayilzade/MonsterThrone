@@ -17,9 +17,10 @@ This file is the single source of truth for the remaining work in Draft PR #11.
 - Mobile aim direction and attack cone work.
 - Five-second respawn protection works.
 - Camp boundary affects only nearby creatures.
+- Mobile hotbar, corpse-pile interaction and keyboard bindings were implemented.
 - PR remains Draft.
 
-## Current pass — final Stage 2A stabilization
+## Completed pass — final Stage 2A stabilization
 
 ### A. Mobile layout
 
@@ -76,7 +77,51 @@ This file is the single source of truth for the remaining work in Draft PR #11.
 - [x] Mobile touch controls remain independent from keyboard bindings.
 - [x] Add tests for defaults, two bindings, conflicts, reset and persistence serialization.
 
-## Out of scope for Stage 2A
+## Current pass — manual mobile QA follow-up
+
+Validated manually on iPhone after merge `08182deb6157648533d24915ace6df931b11c1ba`.
+
+### G. Mobile-only settings visibility
+
+- [ ] On touch-only/mobile devices, hide the keyboard-binding `Управление` tab and its long desktop key list.
+- [ ] Keep mobile controls working unchanged; do not imply that keyboard bindings configure touch controls.
+- [ ] On hybrid devices with a physical keyboard, allow the tab only when a keyboard/fine pointer is detected or through an explicit advanced option.
+
+### H. Mobile camera zoom
+
+- [ ] Add two-finger pinch zoom on the game canvas.
+- [ ] Clamp zoom to a useful range and keep the hero near the camera center.
+- [ ] Pinch must not trigger attack, selection, joystick or UI buttons.
+- [ ] Preserve current desktop wheel/mouse behavior if present.
+- [ ] Save camera zoom locally as a display preference, not in character save data.
+
+### I. Minimap placement
+
+- [ ] Keep the minimap fully visible and tappable; it must not sit under hotbar, action buttons, pause banner or other HUD layers.
+- [ ] Verify portrait 390×844 and 430×932, Safari expanded/collapsed bars, and landscape.
+
+### J. Mobile target lock and aim clarity
+
+- [ ] Tapping a creature creates a persistent target lock with a clearly visible selected-target marker.
+- [ ] Dodge must not clear the selected target unless the target dies, unloads, leaves a defined break distance, or the player explicitly cancels/switches it.
+- [ ] After dodge, the hero should resume facing/aiming at the locked target.
+- [ ] When no target is locked, the facing and attack direction must remain visually unambiguous.
+- [ ] Add regression tests for target persistence through dodge and target cleanup on death/unload/range break.
+
+### K. Sanctuary behavior revision
+
+- [ ] Hero attacks from inside the sanctuary may damage creatures outside.
+- [ ] A creature that detects it cannot damage the protected hero while receiving damage must retreat beyond a safe disengage distance instead of standing at the boundary.
+- [ ] Retreating creatures must not remain passive targets at the boundary; once safely away they resume normal AI.
+- [ ] Creatures still cannot cross the sanctuary boundary or damage a protected hero.
+- [ ] Preserve five-second respawn protection.
+- [ ] Add tests for retreat-on-unfair-damage, disengage distance and normal AI resumption.
+
+## Stage 2B notes
+
+Detailed future work belongs in `docs/STAGE_2B_BACKLOG.md`.
+
+## Out of scope for the current Stage 2A follow-up
 
 Do not add in this pass:
 
@@ -85,24 +130,23 @@ Do not add in this pass:
 - ecosystem AI redesign;
 - story objectives;
 - major crafting expansion;
-- draggable mobile-control layouts.
-
-These belong to Stage 2B.
+- draggable mobile-control layouts;
+- full corpse-container and queued-looting system;
+- dash skill progression.
 
 ## Required validation
 
 Run locally:
 
 ```text
-node tests/sector-world.test.js
-node tests/hero-v072.test.js
-node tests/mobile-controls.test.js
+npm run test:v08
 node --check hero072/mobile-controls.js
+node --check hero072/control-bindings.js
 node --check hero072/boot.js
 git diff --check
 ```
 
-Also run any new corpse, sanctuary and control-binding tests, plus a browser smoke test on:
+Also run new regression tests for mobile visibility, pinch state, minimap layout helpers, target persistence and sanctuary retreat, plus manual browser smoke on:
 
 - 390×844 portrait;
 - 430×932 portrait;
@@ -112,7 +156,7 @@ Also run any new corpse, sanctuary and control-binding tests, plus a browser smo
 ## Completion record
 
 - Current checklist created at head: `68db7de6a32baa596d78dbf5b16d8070c1b11640`.
-- Latest implementation head: `0cb1165da801a2598c4c66ebfb664839d30d8989`.
+- Latest merged implementation head: `08182deb6157648533d24915ace6df931b11c1ba`.
 - Test results (2026-08-02):
   - `npm run test:v08` — passed (23/23 sector, 12/12 hero, 9/9 mobile, 8/8 stabilization, 5/5 bindings).
   - `node tests/sector-world.test.js` — 23/23 passed.
@@ -124,4 +168,4 @@ Also run any new corpse, sanctuary and control-binding tests, plus a browser smo
   - `node --check hero072/control-bindings.js` — passed.
   - `node --check hero072/boot.js` — passed.
   - `git diff --check` — passed.
-  - Browser smoke at 390×844, 430×932, mobile landscape and 1366×768 — not run: no browser executable or browser automation package is installed in the environment; manual verification remains required.
+  - Manual iPhone QA: core touch controls and respawn protection work; follow-up items G–K remain open.
