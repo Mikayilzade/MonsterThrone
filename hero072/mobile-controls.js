@@ -18,6 +18,14 @@
     ejectFromSafeZone(entity,camp,radius,padding);entity.state='wander';entity.dir=Math.atan2(entity.y-camp.y,entity.x-camp.x);return true;
   }
   function canDamageHero(hero,worldTime,camp,radius){return !inSafeZone(hero,camp,radius)&&(hero.invulnerableUntil||0)<=worldTime;}
+  function canAttackTarget(hero,target,camp,radius){return !(inSafeZone(hero,camp,radius)&&!inSafeZone(target,camp,radius));}
+  function canPlaceTrap(hero,point,camp,radius){return !inSafeZone(hero,camp,radius)&&!inSafeZone(point,camp,radius);}
+  function nearestLootableCarcass(carcasses,origin,range=46,part='any'){
+    return carcasses.filter(c=>Math.hypot(c.x-origin.x,c.y-origin.y)<range&&Array.isArray(c.parts)&&(part==='meat'?c.parts.includes('raw_meat'):c.parts.length))
+      .sort((a,b)=>Math.hypot(a.x-origin.x,a.y-origin.y)-Math.hypot(b.x-origin.x,b.y-origin.y)||String(a.uid||'').localeCompare(String(b.uid||'')))[0]||null;
+  }
+  function shouldRefreshInventory(previousSlot,nextSlot,panel){return panel==='inventory'&&previousSlot!==nextSlot;}
+  function corpsePileLayout(carcasses){const groups=new Map();for(const corpse of carcasses){const key=`${Math.round(corpse.x)},${Math.round(corpse.y)}`;(groups.get(key)||groups.set(key,[]).get(key)).push(corpse);}const layout=new Map();for(const group of groups.values())group.forEach((corpse,index)=>{const angle=index*2.3999632297,radius=index?6*Math.sqrt(index):0;layout.set(corpse,{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius,count:group.length,parts:group.reduce((n,c)=>n+(c.parts?.length||0),0),label:index===0});});return layout;}
   function hotbarSignature(hero){return JSON.stringify([hero.selected,hero.hotbar,hero.equipment?.weapon,hero.hotbar.map(id=>id?(hero.inv[id]||0):0)]);}
-  return {bindPointerButtons,normalizedDirection,forwardTarget,inSafeZone,ejectFromSafeZone,applySafeZoneBoundary,canDamageHero,hotbarSignature,clamp};
+  return {bindPointerButtons,normalizedDirection,forwardTarget,inSafeZone,ejectFromSafeZone,applySafeZoneBoundary,canDamageHero,canAttackTarget,canPlaceTrap,nearestLootableCarcass,shouldRefreshInventory,corpsePileLayout,hotbarSignature,clamp};
 });

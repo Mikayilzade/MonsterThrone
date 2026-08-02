@@ -64,3 +64,15 @@ button:disabled{opacity:.42;cursor:not-allowed}
 .world-status{position:fixed;left:16px;bottom:106px;z-index:41;display:flex;flex-direction:column;gap:2px;padding:8px 11px;pointer-events:none}
 .world-status strong{font-size:13px;color:#d9efc3}.world-status small{font-size:10px;color:#91aaa1}
 @media(max-width:620px){.world-status{left:auto;right:10px;bottom:270px;padding:6px 8px}.world-status small{display:none}}
+
+/* Stage 2A final mobile layout uses one set of safe-area-aware HUD anchors. */
+.system-page{margin:14px 0;max-height:58dvh;overflow:auto}.setting{display:flex;gap:10px;align-items:center;justify-content:center}.setting input{width:22px;height:22px}.binding-help{font-size:12px}.binding-list{display:grid;gap:6px;text-align:left}.binding-row{display:grid;grid-template-columns:minmax(140px,1fr) minmax(110px,auto) minmax(110px,auto);gap:6px;align-items:center}.binding-row button{font-size:11px;padding:7px}.binding-row button.active{outline:2px solid var(--mint)}.desktop-touch-controls .mobile-controls{display:block}
+@media(max-width:620px){
+ :root{--safe-top:env(safe-area-inset-top,0px);--safe-right:env(safe-area-inset-right,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:env(safe-area-inset-left,0px);--hud-top:calc(var(--safe-top) + 6px);--controls-bottom:calc(var(--safe-bottom) + 12px);--hotbar-bottom:calc(var(--controls-bottom) + 126px);--status-bottom:calc(var(--hotbar-bottom) + 76px)}
+ html,body,#game{height:100dvh;min-height:100dvh}.topbar{top:var(--hud-top);left:calc(var(--safe-left) + 6px);right:calc(var(--safe-right) + 6px)}
+ .hotbar{left:calc(var(--safe-left) + 8px);right:calc(var(--safe-right) + 8px);bottom:var(--hotbar-bottom);max-width:none;scroll-snap-type:x mandatory;scrollbar-width:thin;overscroll-behavior-x:contain;padding:6px}
+ .slot{flex:0 0 calc((100% - 18px)/4);min-width:54px;width:auto;height:64px;min-height:64px;scroll-snap-align:start}.slot .label{max-width:100%;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:10px}.slot .icon{font-size:18px}
+ .joystick{bottom:var(--controls-bottom)!important}.mobile-actions{bottom:var(--controls-bottom)!important}.world-status{bottom:var(--status-bottom)}.toasts{bottom:calc(var(--status-bottom) + 58px);max-height:94px}.prompt{bottom:calc(var(--status-bottom) + 4px);max-width:calc(100vw - var(--safe-left) - var(--safe-right) - 20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .binding-row{grid-template-columns:1fr 1fr 1fr}.binding-row span{grid-column:1/4}.pausecard{max-height:calc(100dvh - var(--safe-top) - var(--safe-bottom) - 20px);overflow:auto;padding:18px}
+}
+@media(max-width:900px) and (orientation:landscape){html,body,#game{height:100dvh}.hotbar{bottom:calc(env(safe-area-inset-bottom) + 8px);max-width:55vw}.joystick{bottom:calc(env(safe-area-inset-bottom) + 8px)}.mobile-actions{bottom:calc(env(safe-area-inset-bottom) + 8px)}.toasts{bottom:90px}.prompt{bottom:72px}.world-status{bottom:96px}}

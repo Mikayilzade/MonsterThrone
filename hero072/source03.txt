@@ -5,20 +5,12 @@ ught>=1)info+=`Твои наблюдения: удар примерно ${Math.r
 }
 function roleText(r){return ({scavenger:'падальщик',grazer:'травоядное',territorial:'территориальный зверь',predator:'хищник'})[r]||r;}
 
-function inputVec(){let x=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+mobileVec.x;let y=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0)+mobileVec.y;const l=Math.hypot(x,y);return l>1?{x:x/l,y:y/l}:{x,y};}
+function actionDown(id){return controlBindings[id].some(code=>code&&keys[code]);}
+function inputVec(){let x=(actionDown('moveRight')?1:0)-(actionDown('moveLeft')?1:0)+mobileVec.x;let y=(actionDown('moveDown')?1:0)-(actionDown('moveUp')?1:0)+mobileVec.y;const l=Math.hypot(x,y);return l>1?{x:x/l,y:y/l}:{x,y};}
 addEventListener('keydown',e=>{
-  keys[e.code]=true;
-  if(e.code==='Space'){e.preventDefault();attack();}
-  if(e.code==='KeyE')pickupNearby();
-  if(e.code==='KeyF')useNearby();
-  if(e.code==='KeyK')togglePanel('character');
-  if(e.code==='KeyI')togglePanel('inventory');
-  if(e.code==='KeyC')togglePanel('craft');
-  if(e.code==='KeyJ')togglePanel('book');
-  if(e.code==='KeyP')handlePauseKey();
-  if(e.code==='Escape')handleEscapeKey();
-  if(e.code==='ShiftLeft'||e.code==='ShiftRight')dodge();
-  if(/^Digit[1-8]$/.test(e.code)){hero.selected=+e.code.slice(-1)-1;useHotbar(hero.selected);renderHotbar();}
+  if(rebindTarget){e.preventDefault();if(e.code==='Escape'){rebindTarget=null;renderControlSettings();return;}if(e.code==='Backspace'||e.code==='Delete'){controlBindings=BINDINGS.setBinding(controlBindings,rebindTarget.action,rebindTarget.index,null,true).bindings;BINDINGS.save(localStorage,controlBindings);rebindTarget=null;renderControlSettings();return;}let result=BINDINGS.setBinding(controlBindings,rebindTarget.action,rebindTarget.index,e.code,false);if(!result.ok&&!confirm('Клавиша уже используется. Заменить назначение?'))return;controlBindings=BINDINGS.setBinding(controlBindings,rebindTarget.action,rebindTarget.index,e.code,true).bindings;BINDINGS.save(localStorage,controlBindings);rebindTarget=null;renderControlSettings();return;}
+  keys[e.code]=true;const action=BINDINGS.actionForCode(controlBindings,e.code);if(!action)return;
+  if(action==='attack'){e.preventDefault();attack();}else if(action==='pickup')pickupNearby();else if(action==='use')useNearby();else if(action==='character')togglePanel('character');else if(action==='inventory')togglePanel('inventory');else if(action==='craft')togglePanel('craft');else if(action==='book')togglePanel('book');else if(action==='pause')handlePauseKey();else if(action==='system')handleEscapeKey();else if(action==='dodge')dodge();else if(action.startsWith('quick')){const slot=Number(action.slice(5))-1;useHotbar(slot);renderHotbar();}
 });
 addEventListener('keyup',e=>keys[e.code]=false);
 canvas.addEventListener('pointermove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;const c=camera();mouse.worldX=e.clientX+c.x;mouse.worldY=e.clientY+c.y;if(e.pointerType==='mouse'){lastInputWasTouch=false;const dx=mouse.worldX-hero.x,dy=mouse.worldY-hero.y;if(Math.hypot(dx,dy)>1)lastAimDirection=MOBILE.normalizedDirection(dx,dy,lastAimDirection);}});
@@ -44,7 +36,6 @@ function equipWeapon(id){
 }
 function attack(mobile=false){
   if(world.paused||hero.respawning||attackCd>0)return;
-  if((hero.invulnerableUntil||0)>world.time){hero.invulnerableUntil=world.time;toast('Защита после возрождения снята атакой.');}
   const wid=equippedWeaponId();if(!hero.inv[wid])return toast('Нужно оружие.','bad');
   const profile=combatProfile(target&&!target?.dead?target:null);if(hero.stamina<profile.staminaCost)return toast(`Не хватает выносливости: нужно ${profile.staminaCost.toFixed(1)}.`,'bad');
   hero.stamina=Math.max(0,hero.stamina-profile.staminaCost);attackCd=profile.attackInterval;
@@ -52,8 +43,11 @@ function attack(mobile=false){
   if(target&&!target.dead&&dist(target,hero)<profile.range)e=target;
   else if(mobile||lastInputWasTouch)e=MOBILE.forwardTarget(candidates,hero,lastAimDirection,profile.range,.3);
   else{const aim={x:mouse.worldX,y:mouse.worldY};e=nearest(candidates,aim,150);}
+  if(e&&!MOBILE.canAttackTarget(hero,e,world.camp,CAMP_SAFE_RADIUS)){sanctuaryToast();attackCd=0;hero.stamina=Math.min(hero.maxStamina,hero.stamina+profile.staminaCost);return;}
+  if((hero.invulnerableUntil||0)>world.time){hero.invulnerableUntil=world.time;toast('Защита после возрождения снята атакой.');}
   if(e)hitEnemy(e);else combat(`${ITEMS[wid].name} рассекло воздух перед героем.`,'out');
 }
+function sanctuaryToast(){if(world.time-lastSanctuaryToast>2){lastSanctuaryToast=world.time;toast('Защита лагеря не позволяет атаковать наружу.','bad');}}
 function hitEnemy(e){
   const k=enemyKnowledge(e.type);k.fought++;const profile=combatProfile(e);
   if(Math.random()>profile.accuracy){gainSkill('spear',.08);combat(`Промах по ${ENEMY_TYPES[e.type].name}. Точность ${Math.round(profile.accuracy*100)}%.`,'out');return;}
@@ -86,7 +80,7 @@ function clearCampThreats(){for(const e of world.enemies)if(dist(e,world.camp)<C
 function die(reason){if(hero.respawning)return;hero.respawning=true;hero.deaths++;hero.tempPower=0;hero.tempPowerTime=0;world.paused=true;$('pauseScreen').classList.add('hidden');$('deathText').textContent=`Причина: ${reason}. Смерть №${hero.deaths}. Ничего из постоянного имущества не потеряно.`;$('deathScreen').classList.remove('hidden');let n=3;$('respawnText').textContent=`Возвращение в лагерь через ${n}…`;const t=setInterval(()=>{n--;if(n>0)$('respawnText').textContent=`Возвращение в лагерь через ${n}…`;else{clearInterval(t);hero.x=world.camp.x+40;hero.y=world.camp.y;hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;hero.hunger=Math.max(45,hero.hunger);hero.invulnerableUntil=world.time+5;clearCampThreats();hero.respawning=false;world.paused=false;$('deathScreen').classList.add('hidden');toast('Якорь защищает тебя 5 секунд. Атака снимет защиту досрочно.');saveGame(true);}},700);}
 
 function pickupNearby(){
-  if(world.paused||hero.respawning)return;findNear();if(!nearObject)return toast('Рядом нечего подобрать.');
+  if(world.paused||hero.respawning)return;nearObject=MOBILE.nearestLootableCarcass(world.carcasses,hero,46)||null;if(!nearObject)findNear();if(!nearObject)return toast('Рядом нечего подобрать.');
   if(nearObject.kind==='plant'||nearObject.kind==='resource'){
     addInv(nearObject.id,1);if(nearObject.kind==='plant'){addKnowledgePlant(nearObject.id,'seen');gainSkill('research',0.08);}
     world.objects.splice(world.objects.indexOf(nearObject),1);nearObject=null;return;
@@ -100,7 +94,7 @@ function pickupNearby(){
   if(nearObject.kind==='carcass')harvestCarcass(nearObject);
 }
 function useNearby(){
-  if(world.paused||hero.respawning)return;findNear();if(!nearObject)return toast('Рядом нечего использовать.');
+  if(world.paused||hero.respawning)return;nearObject=MOBILE.nearestLootableCarcass(world.carcasses,hero,46)||null;if(!nearObject)findNear();if(!nearObject)return toast('Рядом нечего использовать.');
   if(nearObject.kind==='plant'){
     useItem(nearObject.id,true);addKnowledgePlant(nearObject.id,'raw');gainSkill('survival',0.1);
     world.objects.splice(world.objects.indexOf(nearObject),1);nearObject=null;
@@ -157,11 +151,12 @@ function useItem(id,fromWorld=false){
 }
 function placeTrap(poisoned){
   const a=lastInputWasTouch?Math.atan2(lastAimDirection.y,lastAimDirection.x):Math.atan2(mouse.worldY-hero.y,mouse.worldX-hero.x);
+  const point={x:hero.x+Math.cos(a)*42,y:hero.y+Math.sin(a)*42};if(!MOBILE.canPlaceTrap(hero,point,world.camp,CAMP_SAFE_RADIUS)){addInv(poisoned?'poison_paste':'simple_trap',1);return toast('В святилище и через его границу ловушки ставить нельзя.','bad');}
   world.objects.push({kind:'trap',id:poisoned?'poison_trap':'simple_trap',x:hero.x+Math.cos(a)*42,y:hero.y+Math.sin(a)*42,r:13,armed:true,poisoned,quality:(skillFactor('trapping',.006,.001)+skillFactor('crafting',.003,.0005))/2});
   gainSkill('trapping',0.28);
   toast(poisoned?'Поставлена отравленная ловушка.':'Ловушка установлена.');
 }
-function useHotbar(slot,activate=slot===hero.selected){const id=hero.hotbar[slot];hero.selected=slot;hotbarRenderKey='';if(!activate||!id)return;if(ITEMS[id]?.type==='weapon')return equipWeapon(id);useItem(id);}
+function useHotbar(slot,activate=slot===hero.selected){const id=hero.hotbar[slot],previous=hero.selected;hero.selected=slot;hotbarRenderKey='';if(MOBILE.shouldRefreshInventory(previous,slot,panelType))renderPanels();if(!activate||!id)return;if(ITEMS[id]?.type==='weapon')return equipWeapon(id);useItem(id);}
 
 function findNear(){
   for(const c of world.carcasses)ensureCarcass(c);
