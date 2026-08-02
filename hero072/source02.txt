@@ -123,7 +123,7 @@ function resetHeroNew(){
     stats:{strength:10,endurance:10,agility:10,intelligence:10},statLatent:{strength:0,endurance:0,agility:0,intelligence:0},
     attack:11,defense:1,move:109,carry:30,tempPower:0,tempPowerTime:0,growthImpulse:null,
     inv:{spear:1,simple_trap:2},hotbar:['spear','simple_trap',null,null,null,null,null,null],selected:0,
-    knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,quest:0,levelProgress:0});
+    knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,invulnerableUntil:0,quest:0,levelProgress:0});
   ensureHeroFields();recomputeDerived(false);hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;selectedCarcass=null;spawnWorld();saveGame(true,'auto');
 }
 function makeSaveData(){

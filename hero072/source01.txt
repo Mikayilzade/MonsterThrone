@@ -93,6 +93,7 @@ let DPR=1, W=0,H=0;
 function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;canvas.width=W*DPR;canvas.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);} addEventListener('resize',resize);resize();
 
 const SECTORS=window.MonsterThroneSectorWorld;
+const MOBILE=window.MonsterThroneMobile;
 const sectorManager=new SECTORS.SectorManager({seed:'monster-throne-main-v08'}),sectorConfig=sectorManager.config;
 const world={size:sectorConfig.size,cx:sectorConfig.cx,cy:sectorConfig.cy,radius:sectorConfig.radius,camp:sectorConfig.camp,time:0,day:1,paused:false,objects:[],enemies:[],carcasses:[],damage:[],seed:sectorConfig.seed};
 const hero={x:world.camp.x+40,y:world.camp.y,radius:12,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
@@ -100,10 +101,12 @@ const hero={x:world.camp.x+40,y:world.camp.y,radius:12,hp:100,maxHp:100,stamina:
   statLatent:{strength:0,endurance:0,agility:0,intelligence:0},
   attack:11,defense:1,move:109,carry:30,tempPower:0,tempPowerTime:0,growthImpulse:null,
   inv:{spear:1,simple_trap:2},hotbar:['spear','simple_trap',null,null,null,null,null,null],selected:0,
-  knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,quest:0,levelProgress:0};
+  knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,invulnerableUntil:0,quest:0,levelProgress:0};
 let keys={},mouse={x:0,y:0,down:false,worldX:0,worldY:0};
 let target=null, selectedCarcass=null, nearObject=null, panelType=null, lastFrame=performance.now(), attackCd=0,dodgeCd=0,dodgeTime=0,dodgeVX=0,dodgeVY=0,autoSaveTimer=0;
 let mobileVec={x:0,y:0};
+let lastAimDirection={x:1,y:0},lastMobileAction='none',lastInputWasTouch=false,hotbarRenderKey='';
+const CAMP_SAFE_RADIUS=260;
 
 
 const SKILL_META={

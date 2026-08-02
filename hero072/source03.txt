@@ -21,12 +21,12 @@ addEventListener('keydown',e=>{
   if(/^Digit[1-8]$/.test(e.code)){hero.selected=+e.code.slice(-1)-1;useHotbar(hero.selected);renderHotbar();}
 });
 addEventListener('keyup',e=>keys[e.code]=false);
-canvas.addEventListener('pointermove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;const c=camera();mouse.worldX=e.clientX+c.x;mouse.worldY=e.clientY+c.y;});
+canvas.addEventListener('pointermove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;const c=camera();mouse.worldX=e.clientX+c.x;mouse.worldY=e.clientY+c.y;if(e.pointerType==='mouse'){lastInputWasTouch=false;const dx=mouse.worldX-hero.x,dy=mouse.worldY-hero.y;if(Math.hypot(dx,dy)>1)lastAimDirection=MOBILE.normalizedDirection(dx,dy,lastAimDirection);}});
 canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;const c=camera(),wx=e.clientX+c.x,wy=e.clientY+c.y;const p={x:wx,y:wy};const en=nearest(world.enemies.filter(x=>!x.dead),p,34);if(en){if(target===en)attack();else selectEnemy(en);return;}const carc=nearest(world.carcasses,p,34);if(carc){selectCarcass(carc);return;}selectedCarcass=null;mouse.down=true;attack();});
 canvas.addEventListener('pointerup',()=>mouse.down=false);
 
 function nearest(arr,p,max=Infinity){let best=null,bd=max;for(const o of arr){const d=Math.hypot(o.x-p.x,o.y-p.y);if(d<bd){bd=d;best=o;}}return best;}
-function dodge(){if(world.paused||dodgeCd>0||hero.stamina<20)return;const v=inputVec();let x=v.x,y=v.y;if(!x&&!y){const a=Math.atan2(mouse.worldY-hero.y,mouse.worldX-hero.x);x=Math.cos(a);y=Math.sin(a);}dodgeVX=x*420;dodgeVY=y*420;dodgeTime=.22;dodgeCd=1.3;hero.stamina-=20;}
+function dodge(mobile=false){if(world.paused||dodgeCd>0||hero.stamina<20)return;const v=inputVec();let x=v.x,y=v.y;if(!x&&!y){if(mobile||lastInputWasTouch){x=lastAimDirection.x;y=lastAimDirection.y;}else{const a=Math.atan2(mouse.worldY-hero.y,mouse.worldX-hero.x);x=Math.cos(a);y=Math.sin(a);}}dodgeVX=x*420;dodgeVY=y*420;dodgeTime=.22;dodgeCd=1.3;hero.stamina-=20;}
 function equippedWeaponId(){
   ensureHeroFieldsBare();
   let id=hero.equipment?.weapon||'spear';
@@ -40,15 +40,19 @@ function combatProfile(enemy=null,masteryOverride=null){
 function equipWeapon(id){
   if(!ITEMS[id]?.weapon||!hero.inv[id])return toast('Этого оружия нет в сумке.','bad');
   hero.equipment.weapon=id;let idx=hero.hotbar.findIndex(x=>x===id);if(idx<0){idx=hero.hotbar.findIndex(x=>ITEMS[x]?.type==='weapon');if(idx<0)idx=hero.selected;hero.hotbar[idx]=id;}hero.selected=idx;
-  toast(`Экипировано: ${ITEMS[id].name}`);renderHotbar();renderPanels();saveGame(true);
+  toast(`Экипировано: ${ITEMS[id].name}`);hotbarRenderKey='';renderPanels();saveGame(true);
 }
-function attack(){
+function attack(mobile=false){
   if(world.paused||hero.respawning||attackCd>0)return;
+  if((hero.invulnerableUntil||0)>world.time){hero.invulnerableUntil=world.time;toast('Защита после возрождения снята атакой.');}
   const wid=equippedWeaponId();if(!hero.inv[wid])return toast('Нужно оружие.','bad');
   const profile=combatProfile(target&&!target?.dead?target:null);if(hero.stamina<profile.staminaCost)return toast(`Не хватает выносливости: нужно ${profile.staminaCost.toFixed(1)}.`,'bad');
   hero.stamina=Math.max(0,hero.stamina-profile.staminaCost);attackCd=profile.attackInterval;
-  let aim=target&&!target.dead?target:{x:mouse.worldX,y:mouse.worldY};let candidates=world.enemies.filter(e=>!e.dead&&dist(e,hero)<profile.range);
-  if(candidates.length){let e=nearest(candidates,aim,150);if(!e)e=nearest(candidates,hero);hitEnemy(e);}else combat(`${ITEMS[wid].name} рассекло воздух.`,'out');
+  let candidates=world.enemies.filter(e=>!e.dead&&dist(e,hero)<profile.range),e=null;
+  if(target&&!target.dead&&dist(target,hero)<profile.range)e=target;
+  else if(mobile||lastInputWasTouch)e=MOBILE.forwardTarget(candidates,hero,lastAimDirection,profile.range,.3);
+  else{const aim={x:mouse.worldX,y:mouse.worldY};e=nearest(candidates,aim,150);}
+  if(e)hitEnemy(e);else combat(`${ITEMS[wid].name} рассекло воздух перед героем.`,'out');
 }
 function hitEnemy(e){
   const k=enemyKnowledge(e.type);k.fought++;const profile=combatProfile(e);
@@ -77,8 +81,9 @@ function killEnemy(e,killer){
   world.carcasses.push({kind:'carcass',x:e.x,y:e.y,type:e.type,age:0,parts,initialParts:parts.length,level:d.level});
   setTimeout(()=>{const idx=world.enemies.indexOf(e);if(idx>=0)world.enemies.splice(idx,1);},2000);
 }
-function heroHit(e){if(hero.respawning||dodgeTime>0)return;const d=ENEMY_TYPES[e.type],dmg=Math.max(1,Math.round(d.attack*rnd(1.15,.85)-hero.defense));hero.hp-=dmg;floatDamage(hero.x,hero.y,'-'+dmg,'in');combat(`${d.name} → Ты: ${dmg}`,'in');if(hero.hp<=0)die(d.name);}
-function die(reason){if(hero.respawning)return;hero.respawning=true;hero.deaths++;hero.tempPower=0;hero.tempPowerTime=0;world.paused=true;$('pauseScreen').classList.add('hidden');$('deathText').textContent=`Причина: ${reason}. Смерть №${hero.deaths}. Ничего из постоянного имущества не потеряно.`;$('deathScreen').classList.remove('hidden');let n=3;$('respawnText').textContent=`Возвращение в лагерь через ${n}…`;const t=setInterval(()=>{n--;if(n>0)$('respawnText').textContent=`Возвращение в лагерь через ${n}…`;else{clearInterval(t);hero.x=world.camp.x+40;hero.y=world.camp.y;hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;hero.hunger=Math.max(45,hero.hunger);hero.respawning=false;world.paused=false;$('deathScreen').classList.add('hidden');saveGame(true);}},700);}
+function heroHit(e){if(hero.respawning||dodgeTime>0||!MOBILE.canDamageHero(hero,world.time,world.camp,CAMP_SAFE_RADIUS))return;const d=ENEMY_TYPES[e.type],dmg=Math.max(1,Math.round(d.attack*rnd(1.15,.85)-hero.defense));hero.hp-=dmg;floatDamage(hero.x,hero.y,'-'+dmg,'in');combat(`${d.name} → Ты: ${dmg}`,'in');if(hero.hp<=0)die(d.name);}
+function clearCampThreats(){for(const e of world.enemies)if(dist(e,world.camp)<CAMP_SAFE_RADIUS+220){MOBILE.ejectFromSafeZone(e,world.camp,CAMP_SAFE_RADIUS+100,30);e.state='wander';e.attackCd=2;}}
+function die(reason){if(hero.respawning)return;hero.respawning=true;hero.deaths++;hero.tempPower=0;hero.tempPowerTime=0;world.paused=true;$('pauseScreen').classList.add('hidden');$('deathText').textContent=`Причина: ${reason}. Смерть №${hero.deaths}. Ничего из постоянного имущества не потеряно.`;$('deathScreen').classList.remove('hidden');let n=3;$('respawnText').textContent=`Возвращение в лагерь через ${n}…`;const t=setInterval(()=>{n--;if(n>0)$('respawnText').textContent=`Возвращение в лагерь через ${n}…`;else{clearInterval(t);hero.x=world.camp.x+40;hero.y=world.camp.y;hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;hero.hunger=Math.max(45,hero.hunger);hero.invulnerableUntil=world.time+5;clearCampThreats();hero.respawning=false;world.paused=false;$('deathScreen').classList.add('hidden');toast('Якорь защищает тебя 5 секунд. Атака снимет защиту досрочно.');saveGame(true);}},700);}
 
 function pickupNearby(){
   if(world.paused||hero.respawning)return;findNear();if(!nearObject)return toast('Рядом нечего подобрать.');
@@ -151,12 +156,12 @@ function useItem(id,fromWorld=false){
   if(hero.hp<=0)die('неудачный эксперимент');renderPanels();
 }
 function placeTrap(poisoned){
-  const a=Math.atan2(mouse.worldY-hero.y,mouse.worldX-hero.x);
+  const a=lastInputWasTouch?Math.atan2(lastAimDirection.y,lastAimDirection.x):Math.atan2(mouse.worldY-hero.y,mouse.worldX-hero.x);
   world.objects.push({kind:'trap',id:poisoned?'poison_trap':'simple_trap',x:hero.x+Math.cos(a)*42,y:hero.y+Math.sin(a)*42,r:13,armed:true,poisoned,quality:(skillFactor('trapping',.006,.001)+skillFactor('crafting',.003,.0005))/2});
   gainSkill('trapping',0.28);
   toast(poisoned?'Поставлена отравленная ловушка.':'Ловушка установлена.');
 }
-function useHotbar(slot){const id=hero.hotbar[slot];hero.selected=slot;if(!id)return;if(ITEMS[id]?.type==='weapon')return equipWeapon(id);useItem(id);}
+function useHotbar(slot,activate=slot===hero.selected){const id=hero.hotbar[slot];hero.selected=slot;hotbarRenderKey='';if(!activate||!id)return;if(ITEMS[id]?.type==='weapon')return equipWeapon(id);useItem(id);}
 
 function findNear(){
   for(const c of world.carcasses)ensureCarcass(c);
