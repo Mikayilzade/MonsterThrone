@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('assert');
+const mobile=require('../hero072/mobile-controls.js');
+let passed=0;function test(name,fn){fn();passed++;console.log(`✓ ${name}`);}
+test('keyboard controls stay hidden on touch-only devices unless advanced mode is explicit',()=>{assert(!mobile.controlsTabVisible({finePointer:false,keyboard:false}));assert(mobile.controlsTabVisible({finePointer:true,keyboard:false}));assert(mobile.controlsTabVisible({finePointer:false,keyboard:false},true));});
+test('pinch state clamps zoom and consumes the two-pointer gesture',()=>{const p=mobile.createPinchState(1,.65,1.65);assert(!p.down(1,0,0));assert(p.down(2,100,0));assert.strictEqual(p.move(2,300,0).zoom,1.65);assert(p.up(1));assert(!p.pinching);});
+test('minimap remains within portrait and landscape safe HUD regions',()=>{for(const [w,h,landscape] of [[390,844,false],[430,932,false],[844,390,true],[1366,768,true]]){const m=mobile.minimapLayout(w,h,landscape);assert(m.x-m.r>=0);assert(m.x+m.r<=w);assert(m.y-m.r>=0);assert(m.y+m.r<=h);if(w<620&&!landscape)assert(m.y+m.r<h-220);}});
+test('locked target persists through movement and dodge but cleans up on death, unload and range break',()=>{const hero={x:0,y:0},target={x:100,y:0},enemies=[target];assert.strictEqual(mobile.validTarget(target,enemies,hero),target);hero.x=20;assert.strictEqual(mobile.validTarget(target,enemies,hero),target);target.dead=true;assert.strictEqual(mobile.validTarget(target,enemies,hero),null);target.dead=false;assert.strictEqual(mobile.validTarget(target,[],hero),null);target.x=900;assert.strictEqual(mobile.validTarget(target,enemies,hero,720),null);});
+test('unfair sanctuary damage causes retreat, disengagement and normal AI resumption',()=>{const camp={x:0,y:0},hero={x:0,y:0},wolf={x:280,y:0,unfairDamage:true};assert.strictEqual(mobile.retreatState(wolf,hero,camp,260,150).state,'sanctuary-retreat');wolf.x=420;assert.strictEqual(mobile.retreatState(wolf,hero,camp,260,150).state,'resume');assert.strictEqual(wolf.unfairDamage,false);assert.strictEqual(mobile.retreatState(wolf,hero,camp,260,150),null);});
+console.log(`\n${passed}/5 Stage 2A mobile follow-up tests passed.`);
