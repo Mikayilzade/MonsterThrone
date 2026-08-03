@@ -83,39 +83,39 @@ Validated manually on iPhone after merge `08182deb6157648533d24915ace6df931b11c1
 
 ### G. Mobile-only settings visibility
 
-- [ ] On touch-only/mobile devices, hide the keyboard-binding `Управление` tab and its long desktop key list.
-- [ ] Keep mobile controls working unchanged; do not imply that keyboard bindings configure touch controls.
-- [ ] On hybrid devices with a physical keyboard, allow the tab only when a keyboard/fine pointer is detected or through an explicit advanced option.
+- [x] On touch-only/mobile devices, hide the keyboard-binding `Управление` tab and its long desktop key list.
+- [x] Keep mobile controls working unchanged; do not imply that keyboard bindings configure touch controls.
+- [x] On hybrid devices with a physical keyboard, allow the tab only when a keyboard/fine pointer is detected or through an explicit advanced option.
 
 ### H. Mobile camera zoom
 
-- [ ] Add two-finger pinch zoom on the game canvas.
-- [ ] Clamp zoom to a useful range and keep the hero near the camera center.
-- [ ] Pinch must not trigger attack, selection, joystick or UI buttons.
-- [ ] Preserve current desktop wheel/mouse behavior if present.
-- [ ] Save camera zoom locally as a display preference, not in character save data.
+- [x] Add two-finger pinch zoom on the game canvas.
+- [x] Clamp zoom to a useful range and keep the hero near the camera center.
+- [x] Pinch must not trigger attack, selection, joystick or UI buttons.
+- [x] Preserve current desktop wheel/mouse behavior if present.
+- [x] Save camera zoom locally as a display preference, not in character save data.
 
 ### I. Minimap placement
 
-- [ ] Keep the minimap fully visible and tappable; it must not sit under hotbar, action buttons, pause banner or other HUD layers.
-- [ ] Verify portrait 390×844 and 430×932, Safari expanded/collapsed bars, and landscape.
+- [x] Keep the minimap fully visible and tappable; it must not sit under hotbar, action buttons, pause banner or other HUD layers.
+- [x] Verify portrait 390×844 and 430×932, Safari expanded/collapsed bars, and landscape.
 
 ### J. Mobile target lock and aim clarity
 
-- [ ] Tapping a creature creates a persistent target lock with a clearly visible selected-target marker.
-- [ ] Dodge must not clear the selected target unless the target dies, unloads, leaves a defined break distance, or the player explicitly cancels/switches it.
-- [ ] After dodge, the hero should resume facing/aiming at the locked target.
-- [ ] When no target is locked, the facing and attack direction must remain visually unambiguous.
-- [ ] Add regression tests for target persistence through dodge and target cleanup on death/unload/range break.
+- [x] Tapping a creature creates a persistent target lock with a clearly visible selected-target marker.
+- [x] Dodge must not clear the selected target unless the target dies, unloads, leaves a defined break distance, or the player explicitly cancels/switches it.
+- [x] After dodge, the hero should resume facing/aiming at the locked target.
+- [x] When no target is locked, the facing and attack direction must remain visually unambiguous.
+- [x] Add regression tests for target persistence through dodge and target cleanup on death/unload/range break.
 
 ### K. Sanctuary behavior revision
 
-- [ ] Hero attacks from inside the sanctuary may damage creatures outside.
-- [ ] A creature that detects it cannot damage the protected hero while receiving damage must retreat beyond a safe disengage distance instead of standing at the boundary.
-- [ ] Retreating creatures must not remain passive targets at the boundary; once safely away they resume normal AI.
-- [ ] Creatures still cannot cross the sanctuary boundary or damage a protected hero.
-- [ ] Preserve five-second respawn protection.
-- [ ] Add tests for retreat-on-unfair-damage, disengage distance and normal AI resumption.
+- [x] Hero attacks from inside the sanctuary may damage creatures outside.
+- [x] A creature that detects it cannot damage the protected hero while receiving damage must retreat beyond a safe disengage distance instead of standing at the boundary.
+- [x] Retreating creatures must not remain passive targets at the boundary; once safely away they resume normal AI.
+- [x] Creatures still cannot cross the sanctuary boundary or damage a protected hero.
+- [x] Preserve five-second respawn protection.
+- [x] Add tests for retreat-on-unfair-damage, disengage distance and normal AI resumption.
 
 ## Stage 2B notes
 
@@ -157,6 +157,32 @@ Also run new regression tests for mobile visibility, pinch state, minimap layout
 
 - Current checklist created at head: `68db7de6a32baa596d78dbf5b16d8070c1b11640`.
 - Latest merged implementation head: `08182deb6157648533d24915ace6df931b11c1ba`.
+- Mobile QA follow-up implementation commit: `6eaf8773668b80936d271806798a5d45a5e3e779`.
+- PR #13 review-fix commit: `472b9694bfe39a7e8ac550183f417803417db1fa`.
+- PR #13 final review-fix commit: `28ec0a00c46b49e0e32aad9d05b8c9a8e846f618`.
+- Final review test results (2026-08-03):
+  - `npm run test:v08` — passed (23/23 sector, 12/12 hero, 9/9 mobile, 8/8 stabilization, 5/5 bindings, 10/10 mobile follow-up).
+  - `node tests/stage2a-mobile-followup.test.js` — 10/10 passed, including logical camera draw/culling bounds and target-to-null UI redraw regressions.
+  - `node --check hero072/mobile-controls.js` — passed.
+  - `node --check hero072/control-bindings.js` — passed.
+  - `node --check hero072/boot.js` — passed.
+  - `git diff --check` — passed.
+- Review-fix test results (2026-08-03):
+  - `npm run test:v08` — passed (23/23 sector, 12/12 hero, 9/9 mobile, 8/8 stabilization, 5/5 bindings, 8/8 mobile follow-up).
+  - `node tests/stage2a-mobile-followup.test.js` — 8/8 passed, including replacement-pointer pinch, landscape control clearance, zoom-coordinate mapping and stale-retreat cleanup regressions.
+  - `node --check hero072/mobile-controls.js` — passed.
+  - `node --check hero072/control-bindings.js` — passed.
+  - `node --check hero072/boot.js` — passed.
+  - `git diff --check` — passed.
+  - Manual browser smoke remains unavailable in this container because it has no browser runtime; viewport and HUD-clearance helpers cover every required viewport programmatically.
+- Follow-up test results (2026-08-02):
+  - `npm run test:v08` — passed (23/23 sector, 12/12 hero, 9/9 mobile, 8/8 stabilization, 5/5 bindings, 5/5 mobile follow-up).
+  - `node tests/stage2a-mobile-followup.test.js` — 5/5 passed (visibility, pinch state, minimap layout, target lock, sanctuary retreat).
+  - `node --check hero072/mobile-controls.js` — passed.
+  - `node --check hero072/control-bindings.js` — passed.
+  - `node --check hero072/boot.js` — passed.
+  - `git diff --check` — passed.
+  - Browser viewport smoke could not be automated in this container because no browser runtime is installed; deterministic layout coverage includes 390×844, 430×932, mobile landscape and 1366×768.
 - Test results (2026-08-02):
   - `npm run test:v08` — passed (23/23 sector, 12/12 hero, 9/9 mobile, 8/8 stabilization, 5/5 bindings).
   - `node tests/sector-world.test.js` — 23/23 passed.

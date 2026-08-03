@@ -205,8 +205,9 @@ function importSaveFile(file){
   };reader.readAsText(file);
 }
 function threatFor(enemy){const delta=enemy.level-hero.level;let i=delta<-6?0:delta<5?1:delta<15?2:delta<30?3:4;return THREATS[i];}
+function setTarget(next){if(target===next)return false;target=next;renderTarget();return true;}
 function selectEnemy(e){
-  selectedCarcass=null;target=e;const k=enemyKnowledge(e.type);k.seen++;renderTarget();
+  selectedCarcass=null;const k=enemyKnowledge(e.type);k.seen++;if(!setTarget(e))renderTarget();
 }
 function selectCarcass(c){target=null;selectedCarcass=ensureCarcass(c);renderTarget();}
 function renderTarget(){
