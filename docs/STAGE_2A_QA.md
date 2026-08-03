@@ -159,6 +159,14 @@ Also run new regression tests for mobile visibility, pinch state, minimap layout
 - Latest merged implementation head: `08182deb6157648533d24915ace6df931b11c1ba`.
 - Mobile QA follow-up implementation commit: `6eaf8773668b80936d271806798a5d45a5e3e779`.
 - PR #13 review-fix commit: `472b9694bfe39a7e8ac550183f417803417db1fa`.
+- PR #13 final review-fix commit: `28ec0a00c46b49e0e32aad9d05b8c9a8e846f618`.
+- Final review test results (2026-08-03):
+  - `npm run test:v08` — passed (23/23 sector, 12/12 hero, 9/9 mobile, 8/8 stabilization, 5/5 bindings, 10/10 mobile follow-up).
+  - `node tests/stage2a-mobile-followup.test.js` — 10/10 passed, including logical camera draw/culling bounds and target-to-null UI redraw regressions.
+  - `node --check hero072/mobile-controls.js` — passed.
+  - `node --check hero072/control-bindings.js` — passed.
+  - `node --check hero072/boot.js` — passed.
+  - `git diff --check` — passed.
 - Review-fix test results (2026-08-03):
   - `npm run test:v08` — passed (23/23 sector, 12/12 hero, 9/9 mobile, 8/8 stabilization, 5/5 bindings, 8/8 mobile follow-up).
   - `node tests/stage2a-mobile-followup.test.js` — 8/8 passed, including replacement-pointer pinch, landscape control clearance, zoom-coordinate mapping and stale-retreat cleanup regressions.
