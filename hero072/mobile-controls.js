@@ -24,9 +24,11 @@
   function createPinchState(initial=1,min=.65,max=1.65){let zoom=clamp(Number(initial)||1,min,max),points=new Map(),startDistance=0,startZoom=zoom,pinching=false;return {
     down(id,x,y){points.set(id,{x,y});if(points.size===2){const p=[...points.values()];startDistance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1;startZoom=zoom;pinching=true;}return pinching;},
     move(id,x,y){if(!points.has(id))return {pinching,zoom};points.set(id,{x,y});if(points.size>=2){const p=[...points.values()];zoom=clamp(startZoom*Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)/startDistance,min,max);}return {pinching,zoom};},
-    up(id){points.delete(id);const was=pinching;if(points.size<2)pinching=false;return was;},get zoom(){return zoom;},get pinching(){return pinching;}
+    up(id){points.delete(id);const was=pinching;if(points.size<2)pinching=false;return was;},setZoom(value){zoom=clamp(Number(value)||1,min,max);if(pinching){startZoom=zoom;const p=[...points.values()];startDistance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1;}return zoom;},get zoom(){return zoom;},get pinching(){return pinching;}
   };}
   function minimapLayout(width,height,landscape=false,touchLayout=width<=900){const r=touchLayout?(landscape?42:46):72,bottom=touchLayout?(landscape?132:286):16;return {x:width-r-12,y:Math.max(r+12,height-r-bottom),r};}
+  function cameraZoomValue(current,command){if(command==='reset')return 1;const direction=Number(command);return clamp((Number(current)||1)+(direction>0?.1:direction<0?-.1:0),.65,1.65);}
+  function targetAfterWorldTap(currentTarget,tappedEnemy){return tappedEnemy||currentTarget||null;}
   function cameraViewport(hero,width,height,zoom,worldSize){const safeZoom=clamp(Number(zoom)||1,.65,1.65),viewWidth=width/safeZoom,viewHeight=height/safeZoom;return {x:clamp(hero.x-viewWidth/2,0,Math.max(0,worldSize-viewWidth)),y:clamp(hero.y-viewHeight/2,0,Math.max(0,worldSize-viewHeight)),width:viewWidth,height:viewHeight,zoom:safeZoom};}
   function worldToScreen(point,camera,zoom=1){return {x:(point.x-camera.x)*zoom,y:(point.y-camera.y)*zoom};}
   function validTarget(target,enemies,hero,breakDistance=720){if(!target||target.dead||!enemies.includes(target)||Math.hypot(target.x-hero.x,target.y-hero.y)>breakDistance)return null;return target;}
@@ -40,5 +42,5 @@
   function shouldRefreshInventory(previousSlot,nextSlot,panel){return panel==='inventory'&&previousSlot!==nextSlot;}
   function corpsePileLayout(carcasses){const groups=new Map();for(const corpse of carcasses){const key=`${Math.round(corpse.x)},${Math.round(corpse.y)}`;(groups.get(key)||groups.set(key,[]).get(key)).push(corpse);}const layout=new Map();for(const group of groups.values())group.forEach((corpse,index)=>{const angle=index*2.3999632297,radius=index?6*Math.sqrt(index):0;layout.set(corpse,{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius,count:group.length,parts:group.reduce((n,c)=>n+(c.parts?.length||0),0),label:index===0});});return layout;}
   function hotbarSignature(hero){return JSON.stringify([hero.selected,hero.hotbar,hero.equipment?.weapon,hero.hotbar.map(id=>id?(hero.inv[id]||0):0)]);}
-  return {bindPointerButtons,normalizedDirection,forwardTarget,inSafeZone,ejectFromSafeZone,applySafeZoneBoundary,canDamageHero,canAttackTarget,canPlaceTrap,controlsTabVisible,createPinchState,minimapLayout,cameraViewport,worldToScreen,validTarget,targetTransition,markSanctuaryAvoidance,retreatState,nearestLootableCarcass,shouldRefreshInventory,corpsePileLayout,hotbarSignature,clamp};
+  return {bindPointerButtons,normalizedDirection,forwardTarget,inSafeZone,ejectFromSafeZone,applySafeZoneBoundary,canDamageHero,canAttackTarget,canPlaceTrap,controlsTabVisible,createPinchState,minimapLayout,cameraZoomValue,targetAfterWorldTap,cameraViewport,worldToScreen,validTarget,targetTransition,markSanctuaryAvoidance,retreatState,nearestLootableCarcass,shouldRefreshInventory,corpsePileLayout,hotbarSignature,clamp};
 });
