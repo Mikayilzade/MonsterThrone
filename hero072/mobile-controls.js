@@ -26,9 +26,11 @@
     move(id,x,y){if(!points.has(id))return {pinching,zoom};points.set(id,{x,y});if(points.size>=2){const p=[...points.values()];zoom=clamp(startZoom*Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)/startDistance,min,max);}return {pinching,zoom};},
     up(id){points.delete(id);const was=pinching;if(points.size<2)pinching=false;return was;},get zoom(){return zoom;},get pinching(){return pinching;}
   };}
-  function minimapLayout(width,height,landscape=false){const r=width<620?(landscape?42:46):72;return {x:width-r-12,y:landscape?Math.max(r+12,height-r-82):Math.max(r+12,height-r-286),r};}
+  function minimapLayout(width,height,landscape=false,touchLayout=width<=900){const r=touchLayout?(landscape?42:46):72,bottom=touchLayout?(landscape?132:286):16;return {x:width-r-12,y:Math.max(r+12,height-r-bottom),r};}
+  function cameraViewport(hero,width,height,zoom,worldSize){const safeZoom=clamp(Number(zoom)||1,.65,1.65),viewWidth=width/safeZoom,viewHeight=height/safeZoom;return {x:clamp(hero.x-viewWidth/2,0,Math.max(0,worldSize-viewWidth)),y:clamp(hero.y-viewHeight/2,0,Math.max(0,worldSize-viewHeight)),width:viewWidth,height:viewHeight,zoom:safeZoom};}
+  function worldToScreen(point,camera,zoom=1){return {x:(point.x-camera.x)*zoom,y:(point.y-camera.y)*zoom};}
   function validTarget(target,enemies,hero,breakDistance=720){if(!target||target.dead||!enemies.includes(target)||Math.hypot(target.x-hero.x,target.y-hero.y)>breakDistance)return null;return target;}
-  function retreatState(entity,hero,camp,radius,disengage=140){if(!inSafeZone(hero,camp,radius)||!entity?.unfairDamage)return null;const boundaryDistance=Math.hypot(entity.x-camp.x,entity.y-camp.y)-radius;if(boundaryDistance<disengage)return {state:'sanctuary-retreat',angle:Math.atan2(entity.y-camp.y,entity.x-camp.x)};entity.unfairDamage=false;return {state:'resume'};}
+  function retreatState(entity,hero,camp,radius,disengage=140){if(!entity?.unfairDamage)return null;if(!inSafeZone(hero,camp,radius)){entity.unfairDamage=false;return {state:'resume'};}const boundaryDistance=Math.hypot(entity.x-camp.x,entity.y-camp.y)-radius;if(boundaryDistance<disengage)return {state:'sanctuary-retreat',angle:Math.atan2(entity.y-camp.y,entity.x-camp.x)};entity.unfairDamage=false;return {state:'resume'};}
   function nearestLootableCarcass(carcasses,origin,range=46,part='any'){
     return carcasses.filter(c=>Math.hypot(c.x-origin.x,c.y-origin.y)<range&&Array.isArray(c.parts)&&(part==='meat'?c.parts.includes('raw_meat'):c.parts.length))
       .sort((a,b)=>Math.hypot(a.x-origin.x,a.y-origin.y)-Math.hypot(b.x-origin.x,b.y-origin.y)||String(a.uid||'').localeCompare(String(b.uid||'')))[0]||null;
@@ -36,5 +38,5 @@
   function shouldRefreshInventory(previousSlot,nextSlot,panel){return panel==='inventory'&&previousSlot!==nextSlot;}
   function corpsePileLayout(carcasses){const groups=new Map();for(const corpse of carcasses){const key=`${Math.round(corpse.x)},${Math.round(corpse.y)}`;(groups.get(key)||groups.set(key,[]).get(key)).push(corpse);}const layout=new Map();for(const group of groups.values())group.forEach((corpse,index)=>{const angle=index*2.3999632297,radius=index?6*Math.sqrt(index):0;layout.set(corpse,{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius,count:group.length,parts:group.reduce((n,c)=>n+(c.parts?.length||0),0),label:index===0});});return layout;}
   function hotbarSignature(hero){return JSON.stringify([hero.selected,hero.hotbar,hero.equipment?.weapon,hero.hotbar.map(id=>id?(hero.inv[id]||0):0)]);}
-  return {bindPointerButtons,normalizedDirection,forwardTarget,inSafeZone,ejectFromSafeZone,applySafeZoneBoundary,canDamageHero,canAttackTarget,canPlaceTrap,controlsTabVisible,createPinchState,minimapLayout,validTarget,retreatState,nearestLootableCarcass,shouldRefreshInventory,corpsePileLayout,hotbarSignature,clamp};
+  return {bindPointerButtons,normalizedDirection,forwardTarget,inSafeZone,ejectFromSafeZone,applySafeZoneBoundary,canDamageHero,canAttackTarget,canPlaceTrap,controlsTabVisible,createPinchState,minimapLayout,cameraViewport,worldToScreen,validTarget,retreatState,nearestLootableCarcass,shouldRefreshInventory,corpsePileLayout,hotbarSignature,clamp};
 });
