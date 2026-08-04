@@ -34,7 +34,7 @@
   justify-content:flex-start;
 }
 .hud-layout-enabled .hotbar .slot{
-  flex:0 0 calc((100% - (var(--hud-hotbar-slots,4) - 1) * 4px)/var(--hud-hotbar-slots,4));
+  flex:0 0 var(--hud-slot-basis,calc((100% - 12px)/4));
   scroll-snap-align:start;
 }
 
