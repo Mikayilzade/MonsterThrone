@@ -14,6 +14,11 @@ test('viewport profiles separate portrait, landscape and desktop',()=>{
   assert.strictEqual(hud.profileForViewport({width:1200,height:700},{touch:true,finePointer:true}),'desktop');
 });
 
+test('desktop hybrid capability does not activate the touch HUD',()=>{
+  assert(hud.usesTouchHud('mobileLandscape',true));
+  assert(!hud.usesTouchHud('desktop',true));
+});
+
 test('touch detection accepts maxTouchPoints and coarse pointer',()=>{
   assert(hud.detectTouch({maxTouchPoints:1}));
   assert(hud.detectTouch({coarsePointer:true}));
@@ -66,12 +71,15 @@ test('save writes sanitized layouts under the versioned key',()=>{
   assert(JSON.parse(storage.dump()[hud.STORAGE_KEY]).profiles.desktop);
 });
 
-test('mobile minimap patch follows the touch profile above 900px',()=>{
-  const fake={minimapLayout:()=>({x:1,y:1,r:72})};
-  assert(hud.patchMobile(fake,{navigator:{maxTouchPoints:5}}));
-  const m=fake.minimapLayout(932,430,true,false);
+test('mobile minimap patch follows touch profiles but preserves hybrid desktop',()=>{
+  const phone={minimapLayout:()=>({x:1,y:1,r:72})};
+  assert(hud.patchMobile(phone,{navigator:{maxTouchPoints:5}}));
+  const m=phone.minimapLayout(932,430,true,false);
   assert.strictEqual(m.r,36);
   assert(m.x+m.r<=932);assert(m.y+m.r<=430);
+  const hybrid={minimapLayout:()=>({x:1,y:1,r:72})};
+  hud.patchMobile(hybrid,{navigator:{maxTouchPoints:5},matchMedia:q=>({matches:q==='(pointer: fine)'})});
+  assert.strictEqual(hybrid.minimapLayout(1200,700,true,false).r,72);
 });
 
 test('runtime CSS guarantees touch controls beyond the old 900px breakpoint',()=>{
@@ -80,6 +88,7 @@ test('runtime CSS guarantees touch controls beyond the old 900px breakpoint',()=
   assert(css.includes('.hud-profile-mobileLandscape .topbar'));
   assert(css.includes('var(--hud-slot-basis'));
   assert(!css.includes('var(--hud-hotbar-slots,4) - 1'));
+  assert(!css.includes('.hud-layout-enabled .hotbar{'));
 });
 
 test('boot waits for HUD layout assets before assembling the game runtime',()=>{
@@ -89,4 +98,4 @@ test('boot waits for HUD layout assets before assembling the game runtime',()=>{
   assert(boot.indexOf("loadScript('./hud-layout.js')")<boot.indexOf('Promise.all(files.map'));
 });
 
-console.log(`\n${passed}/10 HUD layout stage 1 tests passed.`);
+console.log(`\n${passed}/11 HUD layout stage 1 tests passed.`);
