@@ -55,6 +55,8 @@
     try{return !!capabilities.matchMedia?.('(pointer: coarse)').matches;}catch{return false;}
   }
 
+  const usesTouchHud=(profile,touch)=>!!touch&&profile!=='desktop';
+
   function profileForViewport(viewport={},capabilities={}){
     const width=Math.max(1,finite(viewport.width,1)),height=Math.max(1,finite(viewport.height,1));
     const touch=detectTouch(capabilities),finePointer=!!capabilities.finePointer;
@@ -174,7 +176,7 @@
       if(body){
         body.classList.remove('hud-profile-mobilePortrait','hud-profile-mobileLandscape','hud-profile-desktop','hud-touch');
         body.classList.add('hud-layout-enabled',`hud-profile-${profile}`);
-        if(touch)body.classList.add('hud-touch');
+        if(usesTouchHud(profile,touch))body.classList.add('hud-touch');
         body.dataset.hudProfile=profile;
       }
       applyCssVariables(doc,geometry);
@@ -212,12 +214,13 @@
     const original=mobile.minimapLayout.bind(mobile);
     mobile.minimapLayout=(width,height,landscape=false,touchLayout=false)=>{
       const state=current();
-      const touch=state?.touch||detectTouch({maxTouchPoints:environment.navigator?.maxTouchPoints,matchMedia:environment.matchMedia?.bind?.(environment)})||touchLayout;
-      if(touch){const profile=landscape?'mobileLandscape':'mobilePortrait',m=viewportGeometry(profile,width,height,state?.layouts||DEFAULT_LAYOUTS).elements.minimap;return {x:m.x,y:m.y,r:m.radius};}
-      return original(width,height,landscape,touchLayout);
+      if(state){if(state.profile==='desktop')return original(width,height,landscape,touchLayout);const m=state.geometry.elements.minimap;return {x:m.x,y:m.y,r:m.radius};}
+      const matcher=environment.matchMedia?.bind?.(environment),touch=detectTouch({maxTouchPoints:environment.navigator?.maxTouchPoints,matchMedia:matcher})||touchLayout,finePointer=!!matcher?.('(pointer: fine)').matches;
+      if(!touch||(finePointer&&width>=900))return original(width,height,landscape,touchLayout);
+      const profile=landscape?'mobileLandscape':'mobilePortrait',m=viewportGeometry(profile,width,height,DEFAULT_LAYOUTS).elements.minimap;return {x:m.x,y:m.y,r:m.radius};
     };
     mobile.__hudLayoutPatched=true;return true;
   }
 
-  return {STORAGE_KEY,VERSION,PROFILE_NAMES,DEFAULT_LAYOUTS,detectTouch,profileForViewport,sanitizeLayouts,readStorage,save,viewportGeometry,registerElements,createRuntime,start,current,minimapLayout,patchMobile,clone};
+  return {STORAGE_KEY,VERSION,PROFILE_NAMES,DEFAULT_LAYOUTS,detectTouch,usesTouchHud,profileForViewport,sanitizeLayouts,readStorage,save,viewportGeometry,registerElements,createRuntime,start,current,minimapLayout,patchMobile,clone};
 });
