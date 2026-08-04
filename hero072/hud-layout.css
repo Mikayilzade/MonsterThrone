@@ -7,10 +7,7 @@
   height:var(--hud-joystick-height,112px)!important;
 }
 .hud-layout-enabled .joystick>div{
-  left:calc((var(--hud-joystick-width,112px) - min(48px,calc(var(--hud-joystick-width,112px) * .43)))/2)!important;
-  top:calc((var(--hud-joystick-height,112px) - min(48px,calc(var(--hud-joystick-height,112px) * .43)))/2)!important;
-  width:min(48px,calc(var(--hud-joystick-width,112px) * .43))!important;
-  height:min(48px,calc(var(--hud-joystick-height,112px) * .43))!important;
+  left:28.5%!important;top:28.5%!important;width:43%!important;height:43%!important;max-width:48px;max-height:48px;
 }
 .hud-layout-enabled .mobile-actions{
   right:calc(env(safe-area-inset-right,0px) + var(--hud-actions-right,10px))!important;
@@ -21,8 +18,8 @@
 .hud-layout-enabled .mobile-actions button{
   min-width:var(--hud-action-width,64px)!important;
   width:var(--hud-action-width,64px)!important;
-  min-height:max(44px,var(--hud-action-height,54px))!important;
-  height:max(44px,var(--hud-action-height,54px))!important;
+  min-height:var(--hud-action-height,54px)!important;
+  height:var(--hud-action-height,54px)!important;
 }
 .hud-layout-enabled .hotbar{
   left:calc(env(safe-area-inset-left,0px) + var(--hud-hotbar-left,8px))!important;
@@ -32,6 +29,7 @@
   max-width:none!important;
   min-height:var(--hud-hotbar-height,58px);
   justify-content:flex-start;
+  gap:4px!important;
 }
 .hud-layout-enabled .hotbar .slot{
   flex:0 0 var(--hud-slot-basis,calc((100% - 12px)/4));
@@ -39,6 +37,8 @@
 }
 
 /* The layout profile, not an arbitrary width breakpoint, decides whether touch controls exist. */
+.hud-profile-mobileLandscape,
+.hud-profile-mobileLandscape #game{height:100dvh;min-height:100dvh}
 .hud-profile-mobileLandscape .topbar{
   top:calc(env(safe-area-inset-top,0px) + 4px);
   left:calc(env(safe-area-inset-left,0px) + 5px);
