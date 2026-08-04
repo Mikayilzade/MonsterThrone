@@ -57,7 +57,8 @@
 
   function profileForViewport(viewport={},capabilities={}){
     const width=Math.max(1,finite(viewport.width,1)),height=Math.max(1,finite(viewport.height,1));
-    if(!detectTouch(capabilities))return 'desktop';
+    const touch=detectTouch(capabilities),finePointer=!!capabilities.finePointer;
+    if(!touch||(finePointer&&width>=900))return 'desktop';
     return width>height?'mobileLandscape':'mobilePortrait';
   }
 
@@ -101,7 +102,7 @@
     if(!raw)return {layouts:clone(DEFAULT_LAYOUTS),recovered:false};
     try{
       const parsed=JSON.parse(raw),layouts=sanitizeLayouts(parsed);
-      return {layouts,recovered:parsed.version!==VERSION};
+      return {layouts,recovered:parsed.version!==VERSION||JSON.stringify(parsed)!==JSON.stringify(layouts)};
     }catch{return {layouts:clone(DEFAULT_LAYOUTS),recovered:true};}
   }
 
@@ -149,6 +150,7 @@
     set('--hud-actions-right',e.actions.right);set('--hud-actions-bottom',e.actions.bottom);set('--hud-action-width',e.actions.cellWidth);set('--hud-action-height',e.actions.cellHeight);set('--hud-action-gap',e.actions.gap);
     set('--hud-hotbar-left',e.hotbar.left);set('--hud-hotbar-right',e.hotbar.right);set('--hud-hotbar-bottom',e.hotbar.bottom);set('--hud-hotbar-height',e.hotbar.height);
     style.setProperty('--hud-hotbar-slots',String(geometry.hotbarSlots));
+    style.setProperty('--hud-slot-basis',`calc((100% - ${(geometry.hotbarSlots-1)*4}px)/${geometry.hotbarSlots})`);
   }
 
   let runtime=null;
@@ -162,8 +164,10 @@
     const apply=()=>{
       frame=0;
       const width=finite(options.width,win?.innerWidth||doc?.documentElement?.clientWidth||1),height=finite(options.height,win?.innerHeight||doc?.documentElement?.clientHeight||1);
-      const touch=detectTouch({touch:capabilities.touch,maxTouchPoints:capabilities.maxTouchPoints??win?.navigator?.maxTouchPoints,coarsePointer:capabilities.coarsePointer,matchMedia:capabilities.matchMedia||win?.matchMedia?.bind(win)});
-      const profile=profileForViewport({width,height},{touch});
+      const matcher=capabilities.matchMedia||win?.matchMedia?.bind(win);
+      const touch=detectTouch({touch:capabilities.touch,maxTouchPoints:capabilities.maxTouchPoints??win?.navigator?.maxTouchPoints,coarsePointer:capabilities.coarsePointer,matchMedia:matcher});
+      const finePointer=typeof capabilities.finePointer==='boolean'?capabilities.finePointer:!!matcher?.('(pointer: fine)').matches;
+      const profile=profileForViewport({width,height},{touch,finePointer});
       const geometry=viewportGeometry(profile,width,height,layouts);geometry.touch=touch;
       current={profile,layouts,geometry,touch};
       const body=doc?.body;
