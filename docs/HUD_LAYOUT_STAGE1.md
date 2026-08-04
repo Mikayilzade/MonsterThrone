@@ -10,7 +10,7 @@ The runtime selects one independent profile:
 - `mobileLandscape`
 - `desktop`
 
-Touch detection uses coarse-pointer / touch capability instead of relying only on a width breakpoint. A wide iPhone landscape viewport therefore keeps the joystick and four action buttons visible. Hybrid devices with a fine pointer and desktop-sized viewport stay on the desktop profile.
+Touch detection uses coarse-pointer / touch capability instead of relying only on a width breakpoint. A wide iPhone landscape viewport therefore keeps the joystick and four action buttons visible. Hybrid devices with a fine pointer and desktop-sized viewport stay on the desktop profile and do not inherit mobile minimap/control behavior.
 
 ## Managed elements
 
@@ -44,7 +44,7 @@ The initial mobile-landscape profile provides:
 - compact minimap above the controls;
 - safe-area-aware offsets.
 
-The profile class, not the old `max-width: 900px` media query, decides whether mobile controls are shown.
+The profile class, not the old `max-width: 900px` media query, decides whether mobile controls are shown. The existing desktop hotbar remains unchanged in Stage 1.
 
 ## Next pass
 
@@ -54,6 +54,6 @@ Stage 2 will add the in-game Interface tab and editing mode for drag, resize, sa
 
 - `node --check hero072/hud-layout.js`
 - `node --check hero072/boot.js`
-- `node tests/hud-layout.test.js` — 10/10 passed locally
+- `node tests/hud-layout.test.js` — 11/11 passed locally
 
 A physical iPhone landscape smoke test remains required after merging into `codex` and GitHub Pages deployment.
