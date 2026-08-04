@@ -91,6 +91,17 @@ test('runtime CSS guarantees touch controls beyond the old 900px breakpoint',()=
   assert(!css.includes('.hud-layout-enabled .hotbar{'));
 });
 
+test('layout engine owns fixed positioning for wide touch landscape controls',()=>{
+  const css=fs.readFileSync(path.join(__dirname,'../hero072/hud-layout.css'),'utf8');
+  const joystick=css.match(/\.hud-layout-enabled \.joystick\{([\s\S]*?)\}/)?.[1]||'';
+  const actions=css.match(/\.hud-layout-enabled \.mobile-actions\{([\s\S]*?)\}/)?.[1]||'';
+  assert(joystick.includes('position:fixed!important'));
+  assert(joystick.includes('z-index:35'));
+  assert(actions.includes('position:fixed!important'));
+  assert(actions.includes('display:grid!important'));
+  assert(actions.includes('z-index:35'));
+});
+
 test('boot waits for HUD layout assets before assembling the game runtime',()=>{
   const boot=fs.readFileSync(path.join(__dirname,'../hero072/boot.js'),'utf8');
   assert(boot.includes("loadStyle('./hud-layout.css')"));
@@ -98,4 +109,4 @@ test('boot waits for HUD layout assets before assembling the game runtime',()=>{
   assert(boot.indexOf("loadScript('./hud-layout.js')")<boot.indexOf('Promise.all(files.map'));
 });
 
-console.log(`\n${passed}/11 HUD layout stage 1 tests passed.`);
+console.log(`\n${passed}/12 HUD layout stage 1 tests passed.`);
