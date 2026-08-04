@@ -1,0 +1,65 @@
+/* Stage 1 HUD layout engine: defaults are applied through profile classes and CSS variables. */
+.hud-layout-enabled.hud-touch .mobile-controls{display:block}
+.hud-layout-enabled .joystick{
+  left:calc(env(safe-area-inset-left,0px) + var(--hud-joystick-left,14px))!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-joystick-bottom,14px))!important;
+  width:var(--hud-joystick-width,112px)!important;
+  height:var(--hud-joystick-height,112px)!important;
+}
+.hud-layout-enabled .joystick>div{
+  left:28.5%!important;top:28.5%!important;width:43%!important;height:43%!important;max-width:48px;max-height:48px;
+}
+.hud-layout-enabled .mobile-actions{
+  right:calc(env(safe-area-inset-right,0px) + var(--hud-actions-right,10px))!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-actions-bottom,10px))!important;
+  grid-template-columns:repeat(2,var(--hud-action-width,64px))!important;
+  gap:var(--hud-action-gap,7px)!important;
+}
+.hud-layout-enabled .mobile-actions button{
+  min-width:var(--hud-action-width,64px)!important;
+  width:var(--hud-action-width,64px)!important;
+  min-height:var(--hud-action-height,54px)!important;
+  height:var(--hud-action-height,54px)!important;
+}
+.hud-profile-mobilePortrait .hotbar,
+.hud-profile-mobileLandscape .hotbar{
+  left:calc(env(safe-area-inset-left,0px) + var(--hud-hotbar-left,8px))!important;
+  right:calc(env(safe-area-inset-right,0px) + var(--hud-hotbar-right,8px))!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-hotbar-bottom,148px))!important;
+  transform:none!important;
+  max-width:none!important;
+  min-height:var(--hud-hotbar-height,58px);
+  justify-content:flex-start;
+  gap:4px!important;
+}
+.hud-profile-mobilePortrait .hotbar .slot,
+.hud-profile-mobileLandscape .hotbar .slot{
+  flex:0 0 var(--hud-slot-basis,calc((100% - 12px)/4));
+  scroll-snap-align:start;
+}
+
+/* The layout profile, not an arbitrary width breakpoint, decides whether touch controls exist. */
+.hud-profile-mobileLandscape,
+.hud-profile-mobileLandscape #game{height:100dvh;min-height:100dvh}
+.hud-profile-mobileLandscape .topbar{
+  top:calc(env(safe-area-inset-top,0px) + 4px);
+  left:calc(env(safe-area-inset-left,0px) + 5px);
+  right:calc(env(safe-area-inset-right,0px) + 5px);
+  padding:4px 6px;gap:4px;grid-template-columns:130px minmax(180px,1fr) auto;border-radius:10px;
+}
+.hud-profile-mobileLandscape .identity{font-size:10px}.hud-profile-mobileLandscape .identity strong{font-size:12px}.hud-profile-mobileLandscape .identity small{font-size:8px;margin-top:1px}
+.hud-profile-mobileLandscape .bars{grid-column:auto;gap:2px}.hud-profile-mobileLandscape .barrow{grid-template-columns:58px 1fr 38px;gap:4px;font-size:9px}.hud-profile-mobileLandscape .bar{height:5px}
+.hud-profile-mobileLandscape .topbuttons{grid-row:auto;gap:2px;flex-wrap:nowrap}.hud-profile-mobileLandscape .topbuttons button{min-width:44px;min-height:44px;padding:2px;font-size:14px}
+.hud-profile-mobileLandscape .quest{display:block;top:58px;left:calc(env(safe-area-inset-left,0px) + 6px);width:180px;max-height:48px;padding:5px 7px;overflow:hidden}
+.hud-profile-mobileLandscape .quest small,.hud-profile-mobileLandscape .quest span{display:none}.hud-profile-mobileLandscape .quest strong{font-size:10px;margin:0}
+.hud-profile-mobileLandscape .target{top:58px;right:calc(env(safe-area-inset-right,0px) + 6px);left:auto;width:190px;padding:5px 7px}
+.hud-profile-mobileLandscape .targetline,.hud-profile-mobileLandscape .targethptext,.hud-profile-mobileLandscape .targetinfo{font-size:9px}.hud-profile-mobileLandscape .targethp{height:6px;margin:3px 0}.hud-profile-mobileLandscape .combatlog{display:none}
+.hud-profile-mobileLandscape .world-status{left:calc(env(safe-area-inset-left,0px) + var(--hud-hotbar-left,102px));right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-hotbar-bottom,6px) + 58px);padding:3px 6px;max-width:150px}
+.hud-profile-mobileLandscape .world-status strong{font-size:9px}.hud-profile-mobileLandscape .world-status small{display:none}
+.hud-profile-mobileLandscape .prompt{bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-hotbar-bottom,6px) + 58px);padding:4px 7px;font-size:9px;max-width:32vw}
+.hud-profile-mobileLandscape .toasts{left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-hotbar-bottom,6px) + 84px);transform:translateX(-50%);max-height:42px}.hud-profile-mobileLandscape .toast{padding:4px 6px;font-size:9px;max-width:300px}
+.hud-profile-mobileLandscape .pause-indicator{top:58px;padding:3px 5px}.hud-profile-mobileLandscape .pause-indicator div{min-width:100px}.hud-profile-mobileLandscape .pause-indicator small{display:none}.hud-profile-mobileLandscape .pause-indicator strong{font-size:9px}.hud-profile-mobileLandscape .pause-indicator button{min-width:44px;min-height:44px;padding:2px;font-size:9px}
+.hud-profile-mobileLandscape .panel{top:58px;bottom:calc(env(safe-area-inset-bottom,0px) + 5px)}
+
+.hud-profile-mobilePortrait .mobile-controls{display:block}
+.hud-profile-mobilePortrait .hotbar{scroll-snap-type:x mandatory;overscroll-behavior-x:contain}
