@@ -1,6 +1,9 @@
 /* Stage 1 HUD layout engine: defaults are applied through profile classes and CSS variables. */
 .hud-layout-enabled.hud-touch .mobile-controls{display:block}
 .hud-layout-enabled .joystick{
+  position:fixed!important;
+  z-index:35;
+  touch-action:none;
   left:calc(env(safe-area-inset-left,0px) + var(--hud-joystick-left,14px))!important;
   bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-joystick-bottom,14px))!important;
   width:var(--hud-joystick-width,112px)!important;
@@ -10,6 +13,9 @@
   left:28.5%!important;top:28.5%!important;width:43%!important;height:43%!important;max-width:48px;max-height:48px;
 }
 .hud-layout-enabled .mobile-actions{
+  position:fixed!important;
+  z-index:35;
+  display:grid!important;
   right:calc(env(safe-area-inset-right,0px) + var(--hud-actions-right,10px))!important;
   bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-actions-bottom,10px))!important;
   grid-template-columns:repeat(2,var(--hud-action-width,64px))!important;
