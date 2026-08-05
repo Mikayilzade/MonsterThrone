@@ -88,9 +88,9 @@
 
   function finish(saveChanges){
     if(!editor)return;
-    const rt=runtime();
-    if(saveChanges)rt?.commit(editor.draft);else rt?.cancelPreview();
-    editor.overlay.remove();editor=null;
+    const closing=editor,rt=runtime();editor=null;
+    if(saveChanges)rt?.commit(closing.draft);else rt?.cancelPreview();
+    closing.overlay.remove();
     document.body.classList.remove('hud-editor-active');
     $('systemMenu')?.classList.remove('hidden');
     setInterfaceStatus();
