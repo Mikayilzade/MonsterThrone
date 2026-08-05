@@ -254,7 +254,7 @@
     const original=mobile.minimapLayout.bind(mobile);
     mobile.minimapLayout=(width,height,landscape=false,touchLayout=false)=>{
       const state=current();
-      if(state){if(state.profile==='desktop')return original(width,height,landscape,touchLayout);const m=state.geometry.elements.minimap;return m.visible?{x:m.x,y:m.y,r:m.radius}:{x:-9999,y:-9999,r:0};}
+      if(state){const m=state.geometry.elements.minimap;return m.visible?{x:m.x,y:m.y,r:m.radius}:{x:-9999,y:-9999,r:0};}
       const matcher=environment.matchMedia?.bind?.(environment),touch=detectTouch({maxTouchPoints:environment.navigator?.maxTouchPoints,matchMedia:matcher})||touchLayout,finePointer=!!matcher?.('(pointer: fine)').matches;
       if(!touch||(finePointer&&width>=900))return original(width,height,landscape,touchLayout);
       const profile=landscape?'mobileLandscape':'mobilePortrait',m=viewportGeometry(profile,width,height,DEFAULT_LAYOUTS).elements.minimap;return {x:m.x,y:m.y,r:m.radius};
