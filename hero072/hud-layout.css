@@ -4,13 +4,24 @@
   position:fixed!important;
   z-index:35;
   touch-action:none;
+  border-radius:50%;
+  background:rgba(9,30,36,.62);
+  border:1px solid rgba(170,220,210,.25);
   left:calc(env(safe-area-inset-left,0px) + var(--hud-joystick-left,14px))!important;
   bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-joystick-bottom,14px))!important;
   width:var(--hud-joystick-width,112px)!important;
   height:var(--hud-joystick-height,112px)!important;
 }
 .hud-layout-enabled .joystick>div{
-  left:28.5%!important;top:28.5%!important;width:43%!important;height:43%!important;max-width:48px;max-height:48px;
+  position:absolute;
+  border-radius:50%;
+  background:rgba(104,204,178,.72);
+  left:28.5%!important;
+  top:28.5%!important;
+  width:43%!important;
+  height:43%!important;
+  max-width:48px;
+  max-height:48px;
 }
 .hud-layout-enabled .mobile-actions{
   position:fixed!important;
