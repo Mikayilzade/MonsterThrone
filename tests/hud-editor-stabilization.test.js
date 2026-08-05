@@ -32,10 +32,16 @@ test('biome badge is draggable, resizable, hideable and compactable',()=>{
   assert(css.includes('.hud-biome-compact .world-status'));
 });
 
+test('current and all-layout reset also clear extra visibility and biome state',()=>{
+  assert(js.includes('function replaceResetButtons'));
+  assert(js.includes("extras.profiles[profile]=clone(DEFAULTS.profiles[profile])"));
+  assert(js.includes('extras=clone(DEFAULTS)'));
+});
+
 test('stabilization assets load after the base editor and before game assembly',()=>{
   assert(boot.includes("loadStyle('./hud-editor-stabilization.css')"));
   assert(boot.indexOf("loadScript('./hud-editor.js')")<boot.indexOf("loadScript('./hud-editor-stabilization.js')"));
   assert(boot.indexOf("loadScript('./hud-editor-stabilization.js')")<boot.indexOf('Promise.all(files.map'));
 });
 
-console.log(`\n${passed}/5 HUD editor stabilization tests passed.`);
+console.log(`\n${passed}/6 HUD editor stabilization tests passed.`);
