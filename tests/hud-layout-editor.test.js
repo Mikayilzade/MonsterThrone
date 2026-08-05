@@ -59,7 +59,7 @@ test('editor UI and loader assets are wired',()=>{
   assert(boot.indexOf("loadScript('./hud-layout.js')")<boot.indexOf("loadScript('./hud-editor.js')"));
   assert(boot.indexOf("loadScript('./hud-editor.js')")<boot.indexOf('Promise.all(files.map'));
   assert(editor.includes('runtime()?.preview(editor.draft)'));
-  assert(editor.includes('rt?.commit(editor.draft)'));
+  assert(editor.includes('rt?.commit(closing.draft)'));
   assert(editor.includes('rt?.cancelPreview()'));
 });
 
