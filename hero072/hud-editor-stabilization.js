@@ -286,8 +286,24 @@
     observer.observe(document.body,{childList:true,subtree:true});
   }
 
+  function replaceResetButtons(){
+    const current=$('hudResetCurrent'),all=$('hudResetAll');
+    current?.addEventListener('click',event=>{
+      event.preventDefault();event.stopImmediatePropagation();
+      const profile=activeProfile();
+      if(!confirm(`Сбросить раскладку текущего профиля?`))return;
+      HUD.getRuntime?.()?.reset(profile);
+      extras.profiles[profile]=clone(DEFAULTS.profiles[profile]);save();applyExtras();
+    },true);
+    all?.addEventListener('click',event=>{
+      event.preventDefault();event.stopImmediatePropagation();
+      if(!confirm('Сбросить все три раскладки интерфейса?'))return;
+      HUD.getRuntime?.()?.reset();extras=clone(DEFAULTS);save();applyExtras();
+    },true);
+  }
+
   function init(){
-    restructureSystemMenu();ensureCatalog();applyExtras();observeEditor();
+    restructureSystemMenu();ensureCatalog();replaceResetButtons();applyExtras();observeEditor();
     root.addEventListener('hudlayoutchange',()=>{applyExtras();});
     root.addEventListener('resize',applyExtras,{passive:true});
     root.addEventListener('orientationchange',applyExtras,{passive:true});
