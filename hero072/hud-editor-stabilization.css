@@ -1,0 +1,77 @@
+/* Stage 2.1: mobile usability, element catalogue and biome badge editing. */
+.hud-hide-attack [data-mobile-action="attack"],
+.hud-hide-dodge [data-mobile-action="dodge"],
+.hud-hide-pickup [data-mobile-action="pickup"],
+.hud-hide-use [data-mobile-action="use"]{display:none!important}
+.hud-hide-biome .world-status{display:none!important}
+.hud-editor-active.hud-hide-biome .world-status{display:block!important;opacity:.22}
+
+.hud-layout-enabled .world-status{
+  position:fixed!important;
+  left:calc(env(safe-area-inset-left,0px) + var(--hud-biome-left,16px))!important;
+  right:auto!important;
+  bottom:calc(env(safe-area-inset-bottom,0px) + var(--hud-biome-bottom,210px))!important;
+  width:var(--hud-biome-width,196px)!important;
+  max-width:calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 16px)!important;
+  z-index:31;
+}
+.hud-biome-compact .world-status{padding:5px 8px!important;width:auto!important;min-width:110px}
+.hud-biome-compact .world-status small{display:none!important}
+.hud-biome-compact .world-status strong{font-size:12px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* System menu: fixed escape routes and one independently scrollable page area. */
+#systemMenu .system-menu-shell{
+  position:relative;
+  display:flex!important;
+  flex-direction:column;
+  width:min(760px,calc(100vw - 20px));
+  max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 18px)!important;
+  min-height:0;
+  padding:0!important;
+  overflow:hidden!important;
+}
+.system-menu-header{position:relative;flex:0 0 auto;padding:18px 48px 8px;text-align:center;border-bottom:1px solid rgba(113,174,166,.2);background:rgba(5,21,27,.96)}
+.system-menu-header>small{display:block}.system-menu-header>h2{margin:5px 0}.system-menu-header>p{margin:5px 0 10px}
+.system-menu-header .system-tabs{margin-bottom:0}
+.system-menu-pages{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:12px 18px 18px;scrollbar-gutter:stable}
+.system-menu-pages>.system-page{min-height:0}
+.system-menu-footer{flex:0 0 auto;display:flex;justify-content:center;padding:9px 14px calc(9px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(113,174,166,.22);background:rgba(5,21,27,.98)}
+.system-menu-footer #systemMenuClose{display:block!important;min-width:150px;min-height:44px;margin:0}
+.system-menu-quick-close{position:absolute;right:8px;top:8px;z-index:3;width:44px;height:44px;min-width:44px!important;min-height:44px!important;padding:0!important;font-size:28px!important;line-height:1}
+
+/* Interface catalogue. */
+.hud-element-catalog{display:grid;gap:12px;margin:12px 0;text-align:left}
+.hud-catalog-heading{display:grid;gap:3px}.hud-catalog-heading small{color:var(--muted)}
+.hud-catalog-group{display:grid;gap:5px;padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(11,35,42,.5)}
+.hud-catalog-group>b{font-size:12px;color:#9ed7c8;margin-bottom:2px}
+.hud-catalog-row{display:grid;grid-template-columns:minmax(105px,1fr) auto auto auto auto;gap:6px;align-items:center;padding:7px 0;border-top:1px solid rgba(105,151,149,.14)}
+.hud-catalog-row:first-of-type{border-top:0}.hud-catalog-row>span{font-size:12px}.hud-catalog-row>small{font-size:10px;color:var(--muted)}
+.hud-catalog-row button{min-width:44px;min-height:40px;padding:5px 8px;font-size:10px}
+.hud-visibility-toggle{display:flex;align-items:center;gap:5px;font-size:10px;white-space:nowrap}.hud-visibility-toggle input{position:absolute;opacity:0;pointer-events:none}
+.hud-visibility-toggle i{width:34px;height:20px;border-radius:11px;background:#263d43;border:1px solid #4b6970;position:relative;transition:.15s}
+.hud-visibility-toggle i:after{content:'';position:absolute;width:14px;height:14px;left:2px;top:2px;border-radius:50%;background:#b7c7c5;transition:.15s}
+.hud-visibility-toggle input:checked+i{background:#347e72}.hud-visibility-toggle input:checked+i:after{transform:translateX(14px);background:#e8fff7}
+.hud-visibility-toggle em{font-style:normal;color:var(--muted)}
+.hud-compact-toggle{font-size:10px;white-space:nowrap}
+
+/* Editor outlines follow the real rendered boxes and keep labels outside content. */
+.hud-editor-handle{background:rgba(35,112,105,.10)!important;box-shadow:0 0 0 1px rgba(3,13,16,.75),0 0 12px rgba(112,213,177,.18)!important}
+.hud-editor-handle.selected{background:rgba(200,158,55,.13)!important;box-shadow:0 0 0 2px rgba(255,224,138,.22),0 0 14px rgba(255,224,138,.25)!important}
+.hud-editor-handle>span{top:-23px!important;left:0!important;max-width:max(120px,100%)!important;pointer-events:none}
+.hud-editor-resize{right:-6px!important;bottom:-6px!important;width:20px!important;height:20px!important;border-width:2px!important}
+.hud-editor-resize:after{font-size:10px!important}
+.hud-editor-extension{border-style:dashed}
+
+@media(max-height:520px){
+  #systemMenu .system-menu-shell{height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 8px);max-height:none!important}
+  .system-menu-header{padding:6px 48px 4px}.system-menu-header>small,.system-menu-header>p{display:none}.system-menu-header>h2{font-size:20px;margin:0 0 4px}
+  .system-menu-pages{padding:7px 10px 12px}.system-menu-footer{padding:5px 10px calc(5px + env(safe-area-inset-bottom,0px))}
+  .system-menu-quick-close{top:3px;right:5px}
+  .hud-catalog-row{grid-template-columns:minmax(90px,1fr) auto auto auto auto;padding:4px 0}
+}
+@media(max-width:620px){
+  .system-menu-header{padding-left:12px;padding-right:48px}.system-menu-pages{padding-left:10px;padding-right:10px}
+  .hud-catalog-row{grid-template-columns:1fr auto auto;grid-template-areas:'name toggle reset' 'compact edit edit';}
+  .hud-catalog-row>span{grid-area:name}.hud-catalog-row>.hud-visibility-toggle,.hud-catalog-row>small{grid-area:toggle}.hud-catalog-row>.hud-compact-toggle{grid-area:compact}.hud-catalog-row>[data-edit-id]{grid-area:edit}.hud-catalog-row>[data-reset-id]{grid-area:reset}
+  .hud-catalog-row>[data-edit-id]{width:100%}
+}
