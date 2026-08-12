@@ -1,0 +1,61 @@
+/* Stage 2.2: editor-outline polish and desktop-control cleanup. */
+
+/* Hidden buttons keep their grid cell in grouped mode so neighbours never jump. */
+.hud-action-mode-group.hud-hide-attack [data-mobile-action="attack"],
+.hud-action-mode-group.hud-hide-dodge [data-mobile-action="dodge"],
+.hud-action-mode-group.hud-hide-pickup [data-mobile-action="pickup"],
+.hud-action-mode-group.hud-hide-use [data-mobile-action="use"]{
+  display:flex!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+.hud-action-mode-individual.hud-hide-attack [data-mobile-action="attack"],
+.hud-action-mode-individual.hud-hide-dodge [data-mobile-action="dodge"],
+.hud-action-mode-individual.hud-hide-pickup [data-mobile-action="pickup"],
+.hud-action-mode-individual.hud-hide-use [data-mobile-action="use"]{
+  display:none!important;
+}
+
+/* Desktop touch controls obey the existing PC toggle; joystick is independently optional. */
+.hud-profile-desktop.hud-desktop-no-touch-controls .mobile-controls{display:none!important}
+.hud-profile-desktop.hud-desktop-hide-joystick #joystick{display:none!important}
+.hud-editor-active.hud-profile-desktop.hud-desktop-no-touch-controls .mobile-controls{display:none!important}
+.hud-editor-active.hud-profile-desktop.hud-desktop-hide-joystick #joystick{display:none!important}
+
+/* Outlines are intentionally light and tight: no giant translucent blocks over the game. */
+.hud-editor-handle{
+  background:transparent!important;
+  border:2px dashed rgba(123,216,193,.95)!important;
+  box-shadow:0 0 0 1px rgba(2,12,15,.75)!important;
+  border-radius:7px!important;
+}
+.hud-editor-handle.selected{
+  background:rgba(255,224,138,.05)!important;
+  border-style:solid!important;
+  border-color:#ffe08a!important;
+  box-shadow:0 0 0 2px rgba(255,224,138,.18)!important;
+}
+.hud-editor-handle.hud-editor-round-handle{border-radius:50%!important}
+.hud-editor-handle.hud-editor-button-handle{border-radius:12px!important}
+.hud-editor-handle.hud-editor-desktop-suppressed{display:none!important}
+.hud-editor-handle>span{
+  top:-20px!important;
+  left:2px!important;
+  max-width:min(180px,90vw)!important;
+  padding:2px 6px!important;
+  font-size:8px!important;
+}
+.hud-editor-resize{
+  right:-5px!important;
+  bottom:-5px!important;
+  width:18px!important;
+  height:18px!important;
+  border-width:2px!important;
+}
+.hud-editor-resize:after{font-size:9px!important}
+
+.hud-desktop-joystick-toggle{margin-left:auto}
+
+@media(max-width:620px){
+  .hud-editor-handle>span{font-size:8px!important;top:-19px!important}
+}
