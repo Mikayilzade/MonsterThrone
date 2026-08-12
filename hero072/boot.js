@@ -24,6 +24,7 @@
       // `const ` + `sk` into the runtime error `constsk`.
       const source = parts.map(part => part.replace(/^[\r\n]+|[\r\n]+$/g,'')).join('');
       Function(`${source}\n//# sourceURL=hero072/game.js`)();
+      return loadScript('./viewport-stabilization.js');
     }).catch(error => {
       console.error(error);
       document.body.innerHTML = `<pre style="white-space:pre-wrap;padding:24px;color:#ffd2d2;background:#180b0d">Ошибка запуска v0.7.2:\n${error.stack || error}</pre>`;
