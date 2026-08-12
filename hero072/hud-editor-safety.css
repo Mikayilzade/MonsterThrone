@@ -1,0 +1,45 @@
+/* Stage 3A: safe-area bounds, snap guides, collision warnings and emergency recovery. */
+.hud-safe-area-probe{
+  position:fixed!important;inset:0!important;width:0!important;height:0!important;
+  padding-top:env(safe-area-inset-top,0px)!important;
+  padding-right:env(safe-area-inset-right,0px)!important;
+  padding-bottom:env(safe-area-inset-bottom,0px)!important;
+  padding-left:env(safe-area-inset-left,0px)!important;
+  visibility:hidden!important;pointer-events:none!important;
+}
+.hud-editor-safe-box{
+  position:fixed;z-index:401;pointer-events:none;border:1px dotted rgba(166,224,207,.38);
+  border-radius:12px;box-sizing:border-box;
+}
+.hud-snap-guide{position:fixed;z-index:404;display:none;pointer-events:none;background:rgba(255,224,138,.85);box-shadow:0 0 8px rgba(255,224,138,.38)}
+.hud-snap-guide.active{display:block}
+.hud-snap-guide-x{top:0;bottom:0;width:1px}
+.hud-snap-guide-y{left:0;right:0;height:1px}
+.hud-editor-safety-note{
+  position:fixed;z-index:406;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);transform:translateX(-50%);
+  max-width:min(560px,calc(100vw - 20px));padding:5px 10px;border-radius:999px;background:rgba(5,24,29,.92);
+  border:1px solid rgba(137,202,186,.36);font-size:9px;color:#b9d5cd;text-align:center;pointer-events:none;
+}
+.hud-editor-safety-note.warning{color:#ffe1a3;border-color:rgba(255,184,94,.7);background:rgba(69,35,13,.94)}
+
+/* Use outlines instead of borders so the measured box and editor frame stay identical. */
+.hud-editor-handle{
+  box-sizing:border-box!important;border:0!important;outline:2px dashed rgba(123,216,193,.95)!important;outline-offset:-2px!important;
+}
+.hud-editor-handle.selected{border:0!important;outline:2px solid #ffe08a!important;outline-offset:-2px!important}
+.hud-editor-handle.hud-editor-collision{outline-color:#ff9d70!important;box-shadow:0 0 0 2px rgba(255,112,82,.22),0 0 16px rgba(255,112,82,.28)!important}
+.hud-editor-handle.hud-editor-collision-peer{outline-color:rgba(255,157,112,.8)!important}
+
+.hud-emergency-reset{
+  margin-right:auto!important;border-color:rgba(242,178,88,.58)!important;color:#f4d6a0!important;background:rgba(73,43,16,.36)!important;
+}
+.hud-emergency-reset:hover{background:rgba(93,53,18,.56)!important}
+
+@media(max-width:620px){
+  .hud-editor-safe-box{border-radius:8px}
+  .hud-editor-safety-note{bottom:calc(env(safe-area-inset-bottom,0px) + 4px);font-size:8px;padding:4px 8px}
+  .hud-emergency-reset{width:100%;margin:0 0 6px!important}
+}
+@media(max-height:520px){
+  .hud-editor-safety-note{left:calc(env(safe-area-inset-left,0px) + 6px);right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 4px);transform:none;max-width:220px}
+}
