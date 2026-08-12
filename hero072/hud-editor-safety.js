@@ -75,7 +75,14 @@
     const probe=doc.createElement('div');
     probe.className='hud-safe-area-probe';
     probe.setAttribute('aria-hidden','true');
-    doc.body.appendChild(probe);
+    // The Stage 3A observer watches document.body. Appending/removing this
+    // measurement probe inside body recursively retriggered that observer
+    // whenever the editor overlay existed, freezing the UI. Prefer <html>,
+    // which sits outside the observed subtree; the body fallback keeps the
+    // helper usable in minimal test DOMs.
+    const host=typeof doc.documentElement?.appendChild==='function'?doc.documentElement:doc.body;
+    if(!host||typeof host.appendChild!=='function')return fallback;
+    host.appendChild(probe);
     const style=win.getComputedStyle(probe),num=name=>Math.max(0,parseFloat(style.getPropertyValue(name))||0);
     const out={top:num('padding-top'),right:num('padding-right'),bottom:num('padding-bottom'),left:num('padding-left')};
     probe.remove();return out;
