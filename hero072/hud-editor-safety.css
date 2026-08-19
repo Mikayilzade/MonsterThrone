@@ -1,4 +1,4 @@
-/* Stage 3A: safe-area bounds, snap guides, collision warnings and emergency recovery. */
+/* Stage 3A: advisory safe-area guide, snap guides, collision warnings and emergency recovery. */
 .hud-safe-area-probe{
   position:fixed!important;inset:0!important;width:0!important;height:0!important;
   padding-top:env(safe-area-inset-top,0px)!important;
@@ -7,8 +7,9 @@
   padding-left:env(safe-area-inset-left,0px)!important;
   visibility:hidden!important;pointer-events:none!important;
 }
+/* This is a recommendation, not a hard drag boundary. The physical viewport is the hard edge. */
 .hud-editor-safe-box{
-  position:fixed;z-index:401;pointer-events:none;border:1px dotted rgba(166,224,207,.38);
+  position:fixed;z-index:401;pointer-events:none;border:1px dotted rgba(166,224,207,.22);
   border-radius:12px;box-sizing:border-box;
 }
 .hud-snap-guide{position:fixed;z-index:404;display:none;pointer-events:none;background:rgba(255,224,138,.85);box-shadow:0 0 8px rgba(255,224,138,.38)}
@@ -41,5 +42,5 @@
   .hud-emergency-reset{width:100%;margin:0 0 6px!important}
 }
 @media(max-height:520px){
-  .hud-editor-safety-note{left:calc(env(safe-area-inset-left,0px) + 6px);right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 4px);transform:none;max-width:220px}
+  .hud-editor-safety-note{left:calc(env(safe-area-inset-left,0px) + 6px);right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 4px);transform:none;max-width:260px}
 }
