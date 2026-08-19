@@ -9,12 +9,13 @@
     if(document.querySelector(`script[src="${src}"]`))return resolve();
     const script=document.createElement('script');script.src=src;script.onload=resolve;script.onerror=()=>reject(new Error(`${src}: script load failed`));document.head.appendChild(script);
   });
-  Promise.all([loadStyle('./hud-layout.css'),loadStyle('./hud-editor.css'),loadStyle('./hud-editor-stabilization.css'),loadStyle('./hud-editor-polish.css'),loadStyle('./hud-editor-safety.css')])
+  Promise.all([loadStyle('./hud-layout.css'),loadStyle('./hud-editor.css'),loadStyle('./hud-editor-stabilization.css'),loadStyle('./hud-editor-polish.css'),loadStyle('./hud-editor-safety.css'),loadStyle('./hud-editor-portability.css')])
     .then(()=>loadScript('./hud-layout.js'))
     .then(()=>loadScript('./hud-editor.js'))
     .then(()=>loadScript('./hud-editor-stabilization.js'))
     .then(()=>loadScript('./hud-editor-polish.js'))
     .then(()=>loadScript('./hud-editor-safety.js'))
+    .then(()=>loadScript('./hud-editor-portability.js'))
     .then(()=>Promise.all(files.map(name => fetch(`./${name}`).then(r => {
       if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`);
       return r.text();
