@@ -50,17 +50,13 @@
     for(const other of others){
       const r=copyRect(other);
       x.push(
-        {value:r.left,guide:r.left},
-        {value:r.right-out.width,guide:r.right},
-        {value:r.left-out.width-gap,guide:r.left-gap/2},
-        {value:r.right+gap,guide:r.right+gap/2},
+        {value:r.left,guide:r.left},{value:r.right-out.width,guide:r.right},
+        {value:r.left-out.width-gap,guide:r.left-gap/2},{value:r.right+gap,guide:r.right+gap/2},
         {value:r.left+(r.width-out.width)/2,guide:r.left+r.width/2}
       );
       y.push(
-        {value:r.top,guide:r.top},
-        {value:r.bottom-out.height,guide:r.bottom},
-        {value:r.top-out.height-gap,guide:r.top-gap/2},
-        {value:r.bottom+gap,guide:r.bottom+gap/2},
+        {value:r.top,guide:r.top},{value:r.bottom-out.height,guide:r.bottom},
+        {value:r.top-out.height-gap,guide:r.top-gap/2},{value:r.bottom+gap,guide:r.bottom+gap/2},
         {value:r.top+(r.height-out.height)/2,guide:r.top+r.height/2}
       );
     }
@@ -73,13 +69,9 @@
     const fallback={top:0,right:0,bottom:0,left:0};
     if(!doc?.body||!win?.getComputedStyle)return fallback;
     const probe=doc.createElement('div');
-    probe.className='hud-safe-area-probe';
-    probe.setAttribute('aria-hidden','true');
-    // The Stage 3A observer watches document.body. Appending/removing this
-    // measurement probe inside body recursively retriggered that observer
-    // whenever the editor overlay existed, freezing the UI. Prefer <html>,
-    // which sits outside the observed subtree; the body fallback keeps the
-    // helper usable in minimal test DOMs.
+    probe.className='hud-safe-area-probe';probe.setAttribute('aria-hidden','true');
+    // The body is observed by Stage 3A. Measure under <html> so the probe
+    // cannot recursively retrigger the observer and freeze the editor.
     const host=typeof doc.documentElement?.appendChild==='function'?doc.documentElement:doc.body;
     if(!host||typeof host.appendChild!=='function')return fallback;
     host.appendChild(probe);
@@ -88,9 +80,18 @@
     probe.remove();return out;
   }
 
+  // Advisory iOS safe area. Elements may intentionally extend into it.
   function safeBounds(win,doc,margin=6){
     const insets=readInsets(win,doc),width=Math.max(1,win.innerWidth||doc?.documentElement?.clientWidth||1),height=Math.max(1,win.innerHeight||doc?.documentElement?.clientHeight||1);
     return {left:insets.left+margin,top:insets.top+margin,right:width-insets.right-margin,bottom:height-insets.bottom-margin,width,height,insets};
+  }
+
+  // Hard editor boundary: only the physical viewport is compulsory. This is
+  // deliberately wider than safeBounds in phone landscape so large circular
+  // controls can sit naturally near the rounded screen edges.
+  function viewportBounds(win,doc,margin=4){
+    const width=Math.max(1,win.innerWidth||doc?.documentElement?.clientWidth||1),height=Math.max(1,win.innerHeight||doc?.documentElement?.clientHeight||1);
+    return {left:margin,top:margin,right:Math.max(margin,width-margin),bottom:Math.max(margin,height-margin),width,height};
   }
 
   function geometryRect(id,geometry){
@@ -118,17 +119,20 @@
     return true;
   }
 
+  function rectCenterInside(rect,bounds){
+    const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+    return cx>=bounds.left&&cx<=bounds.right&&cy>=bounds.top&&cy<=bounds.bottom;
+  }
+
   function start(win){
     const doc=win.document,HUD=win.MonsterThroneHudLayout;
     if(!doc||!HUD)return null;
-    let activeId=null,raf=0,lastBiomeRect=null;
+    let activeId=null,raf=0;
     const $=id=>doc.getElementById(id);
-
-    function profile(){return HUD.current?.()?.profile||doc.body.dataset.hudProfile||'desktop';}
-    function overlay(){return $('hudEditorOverlay');}
-    function handles(){return [...(overlay()?.querySelectorAll?.('.hud-editor-handle[data-editor-id]')||[])].filter(node=>!node.classList.contains('hud-editor-desktop-suppressed'));}
-    function rectOf(node){const r=node?.getBoundingClientRect?.();return r&&r.width>1&&r.height>1?{left:r.left,top:r.top,width:r.width,height:r.height,right:r.right,bottom:r.bottom}:null;}
-    function otherRects(id){return handles().filter(node=>node.dataset.editorId!==id&&!node.classList.contains('is-hidden')).map(rectOf).filter(Boolean);}
+    const overlay=()=>$('hudEditorOverlay');
+    const handles=()=>[...(overlay()?.querySelectorAll?.('.hud-editor-handle[data-editor-id]')||[])].filter(node=>!node.classList.contains('hud-editor-desktop-suppressed'));
+    const rectOf=node=>{const r=node?.getBoundingClientRect?.();return r&&r.width>1&&r.height>1?{left:r.left,top:r.top,width:r.width,height:r.height,right:r.right,bottom:r.bottom}:null;};
+    const otherRects=id=>handles().filter(node=>node.dataset.editorId!==id&&!node.classList.contains('is-hidden')).map(rectOf).filter(Boolean);
 
     function ensureDecor(){
       const o=overlay();if(!o)return;
@@ -136,7 +140,7 @@
         const box=doc.createElement('div');box.id='hudEditorSafeBox';box.className='hud-editor-safe-box';o.appendChild(box);
         const vx=doc.createElement('div');vx.id='hudSnapGuideX';vx.className='hud-snap-guide hud-snap-guide-x';o.appendChild(vx);
         const hy=doc.createElement('div');hy.id='hudSnapGuideY';hy.className='hud-snap-guide hud-snap-guide-y';o.appendChild(hy);
-        const note=doc.createElement('div');note.id='hudEditorSafetyNote';note.className='hud-editor-safety-note';note.textContent='Безопасная область · привязка при отпускании';o.appendChild(note);
+        const note=doc.createElement('div');note.id='hudEditorSafetyNote';note.className='hud-editor-safety-note';note.textContent='Пунктир — рекомендованная safe-area · край экрана — граница';o.appendChild(note);
       }
       renderSafeBox();
     }
@@ -156,115 +160,91 @@
       const r=rectOf(node),note=$('hudEditorSafetyNote');if(!r)return;
       let worst=null;
       for(const other of handles()){
+        other.classList.remove('hud-editor-collision-peer');
         if(other===node||other.classList.contains('is-hidden'))continue;
         const o=rectOf(other);if(!o)continue;
-        const ratio=overlapRatio(r,o);
-        other.classList.remove('hud-editor-collision-peer');
-        if(ratio>.38&&(!worst||ratio>worst.ratio))worst={other,ratio};
+        const ratio=overlapRatio(r,o);if(ratio>.38&&(!worst||ratio>worst.ratio))worst={other,ratio};
       }
       node.classList.toggle('hud-editor-collision',!!worst);
-      if(worst){worst.other.classList.add('hud-editor-collision-peer');if(note){note.classList.add('warning');note.textContent=`Перекрытие: ${LABELS[id]||id} ↔ ${LABELS[worst.other.dataset.editorId]||worst.other.dataset.editorId}`;}}
-      else if(note){note.classList.remove('warning');note.textContent='Безопасная область · привязка при отпускании';}
+      if(worst){
+        worst.other.classList.add('hud-editor-collision-peer');
+        if(note){note.classList.add('warning');note.textContent=`Перекрытие: ${LABELS[id]||id} ↔ ${LABELS[worst.other.dataset.editorId]||worst.other.dataset.editorId}`;}
+      }else if(note){
+        note.classList.remove('warning');
+        note.textContent=rectCenterInside(r,safeBounds(win,doc))?'Пунктир — рекомендованная safe-area · край экрана — граница':'За safe-area допустимо · элемент остаётся внутри экрана';
+      }
     }
 
     function inspectActive(){
       raf=0;const o=overlay();if(!o||!activeId)return;
       ensureDecor();const node=o.querySelector(`.hud-editor-handle[data-editor-id="${activeId}"]`),r=rectOf(node);if(!node||!r)return;
-      const result=snapRect(r,safeBounds(win,doc),otherRects(activeId));showGuides(result.guides);collisionState(activeId,node);
+      // Guides are predictive only. Do not mutate the runtime/draft here:
+      // Stage 3A used to preview a snapped copy that the base editor did not
+      // know about, so moving a second control restored stale coordinates and
+      // made the minimap/joystick jump apart in landscape.
+      const result=snapRect(r,viewportBounds(win,doc),otherRects(activeId));
+      showGuides(result.guides);collisionState(activeId,node);
     }
-
     function scheduleInspect(){if(!raf)raf=win.requestAnimationFrame(inspectActive);}
 
-    function applyPreviewSnap(id){
-      const o=overlay();if(!o)return;
-      const node=o.querySelector(`.hud-editor-handle[data-editor-id="${id}"]`),raw=rectOf(node);if(!raw)return;
-      const result=snapRect(raw,safeBounds(win,doc),otherRects(id));
-      showGuides(result.guides);collisionState(id,node);
-      node.style.left=`${Math.round(result.rect.left)}px`;node.style.top=`${Math.round(result.rect.top)}px`;node.style.width=`${Math.round(result.rect.width)}px`;node.style.height=`${Math.round(result.rect.height)}px`;
-      if(id==='biomeBadge'){
-        lastBiomeRect=result.rect;
-        const bottom=Math.max(0,win.innerHeight-result.rect.bottom);
-        doc.documentElement.style.setProperty('--hud-biome-left',`${Math.round(result.rect.left)}px`);
-        doc.documentElement.style.setProperty('--hud-biome-bottom',`${Math.round(bottom)}px`);
-        doc.documentElement.style.setProperty('--hud-biome-width',`${Math.round(result.rect.width)}px`);
-        return;
-      }
-      const runtime=HUD.getRuntime?.(),state=runtime?.current?.();if(!runtime||!state)return;
-      const layouts=state.layouts||runtime.savedLayouts?.();if(!layouts)return;
-      if(writeRect(layouts,state.profile,id,result.rect,{width:win.innerWidth,height:win.innerHeight}))runtime.preview?.(layouts);
+    function normalizeBiomeSaved(profileName,bounds){
+      const node=$('worldStatus'),r=rectOf(node);if(!r)return;
+      const fixed=clampRect(r,bounds);
+      if(Math.abs(fixed.left-r.left)<1&&Math.abs(fixed.top-r.top)<1)return;
+      try{
+        const raw=JSON.parse(win.localStorage.getItem(EXTRAS_KEY)||'null'),p=raw?.profiles?.[profileName];if(!p?.biomeBadge)return;
+        p.biomeBadge.left=fixed.left/win.innerWidth;p.biomeBadge.bottom=Math.max(0,win.innerHeight-fixed.bottom)/win.innerHeight;p.biomeBadge.width=fixed.width;
+        win.localStorage.setItem(EXTRAS_KEY,JSON.stringify(raw));
+      }catch{}
     }
 
     function normalizeSaved(){
       const runtime=HUD.getRuntime?.(),state=runtime?.current?.();if(!runtime||!state)return;
       const layouts=runtime.savedLayouts?.();if(!layouts)return;
-      const b=safeBounds(win,doc),g=state.geometry,profileName=state.profile;
-      const rects=[];
-      for(const id of EDITABLE_IDS){
-        const r=geometryRect(id,g);if(r)rects.push({id,rect:r});
-      }
+      const bounds=viewportBounds(win,doc),g=state.geometry,profileName=state.profile,rects=[];
+      for(const id of EDITABLE_IDS){const r=geometryRect(id,g);if(r)rects.push({id,rect:r});}
       for(const item of rects){
         const others=rects.filter(x=>x.id!==item.id).map(x=>x.rect);
-        const safe=snapRect(item.rect,b,others,8).rect;
-        writeRect(layouts,profileName,item.id,safe,{width:win.innerWidth,height:win.innerHeight});
+        const fixed=snapRect(item.rect,bounds,others,8).rect;
+        writeRect(layouts,profileName,item.id,fixed,{width:win.innerWidth,height:win.innerHeight});
       }
-      runtime.replace?.(layouts);
-
-      if(lastBiomeRect){
-        try{
-          const raw=JSON.parse(win.localStorage.getItem(EXTRAS_KEY)||'null');
-          const p=raw?.profiles?.[profileName];
-          if(p?.biomeBadge){
-            const safe=snapRect(lastBiomeRect,b,[],8).rect;
-            p.biomeBadge.left=safe.left/win.innerWidth;p.biomeBadge.bottom=Math.max(0,win.innerHeight-safe.bottom)/win.innerHeight;p.biomeBadge.width=safe.width;
-            win.localStorage.setItem(EXTRAS_KEY,JSON.stringify(raw));
-            doc.documentElement.style.setProperty('--hud-biome-left',`${Math.round(safe.left)}px`);
-            doc.documentElement.style.setProperty('--hud-biome-bottom',`${Math.round(win.innerHeight-safe.bottom)}px`);
-            doc.documentElement.style.setProperty('--hud-biome-width',`${Math.round(safe.width)}px`);
-          }
-        }catch{}
-      }
-      lastBiomeRect=null;
+      runtime.replace?.(layouts);normalizeBiomeSaved(profileName,bounds);
     }
 
     function emergencyReset(){
       if(!win.confirm('Аварийно восстановить стандартный интерфейс на всех экранах? Сохранение игры не удаляется.'))return;
-      win.localStorage.removeItem(LAYOUT_KEY);
-      win.localStorage.removeItem(EXTRAS_KEY);
-      win.localStorage.removeItem('monsterThrone.desktopJoystickVisible.v1');
-      win.localStorage.removeItem('monsterThrone.desktopHudPolish.v1');
+      win.localStorage.removeItem(LAYOUT_KEY);win.localStorage.removeItem(EXTRAS_KEY);
+      win.localStorage.removeItem('monsterThrone.desktopJoystickVisible.v1');win.localStorage.removeItem('monsterThrone.desktopHudPolish.v1');
       win.location.reload();
     }
-
     function ensureEmergencyButton(){
       const footer=doc.querySelector('#systemMenu .system-menu-footer');if(!footer||$('hudEmergencyReset'))return;
       const button=doc.createElement('button');button.id='hudEmergencyReset';button.type='button';button.className='hud-emergency-reset';button.textContent='⚠ Восстановить интерфейс';button.addEventListener('click',emergencyReset);footer.prepend(button);
     }
 
     doc.addEventListener('pointerdown',event=>{
-      const handle=event.target.closest?.('.hud-editor-handle[data-editor-id]');
-      if(!handle)return;activeId=handle.dataset.editorId;ensureDecor();scheduleInspect();
+      const handle=event.target.closest?.('.hud-editor-handle[data-editor-id]');if(!handle)return;
+      activeId=handle.dataset.editorId;ensureDecor();scheduleInspect();
     },true);
     doc.addEventListener('pointermove',()=>{if(activeId)scheduleInspect();},{capture:true,passive:true});
     doc.addEventListener('pointerup',()=>{
-      if(!activeId)return;const id=activeId;activeId=null;
-      win.setTimeout(()=>{applyPreviewSnap(id);win.setTimeout(()=>showGuides({}),240);},0);
+      if(!activeId)return;activeId=null;
+      // Never write a second preview on release. The base editor remains the
+      // single source of truth; final clamping/snapping happens once on Save.
+      win.setTimeout(()=>showGuides({}),240);
     },true);
     doc.addEventListener('pointercancel',()=>{activeId=null;showGuides({});},true);
     doc.addEventListener('click',event=>{
       if(event.target.closest?.('#hudEditorSave'))win.setTimeout(normalizeSaved,0);
-      if(event.target.closest?.('#hudEditorCancel')){lastBiomeRect=null;showGuides({});}
+      if(event.target.closest?.('#hudEditorCancel'))showGuides({});
       if(event.target.closest?.('#hudEditCurrent,[data-edit-id]'))win.setTimeout(()=>{ensureDecor();renderSafeBox();},0);
     });
-    doc.addEventListener('keydown',event=>{
-      if(event.ctrlKey&&event.shiftKey&&(event.code==='Digit0'||event.key==='0')){event.preventDefault();emergencyReset();}
-    });
+    doc.addEventListener('keydown',event=>{if(event.ctrlKey&&event.shiftKey&&(event.code==='Digit0'||event.key==='0')){event.preventDefault();emergencyReset();}});
     win.addEventListener('resize',()=>{renderSafeBox();if(overlay())scheduleInspect();},{passive:true});
     win.addEventListener('orientationchange',()=>win.setTimeout(()=>{renderSafeBox();if(overlay())scheduleInspect();},80),{passive:true});
-    const observer=new MutationObserver(()=>{ensureEmergencyButton();if(overlay())ensureDecor();});
-    observer.observe(doc.body,{childList:true,subtree:true});
-    ensureEmergencyButton();
-    return {destroy(){observer.disconnect();}};
+    const observer=new MutationObserver(()=>{ensureEmergencyButton();if(overlay())ensureDecor();});observer.observe(doc.body,{childList:true,subtree:true});
+    ensureEmergencyButton();return {destroy(){observer.disconnect();}};
   }
 
-  return {clampRect,overlapRatio,snapRect,safeBounds,geometryRect,writeRect,start};
+  return {clampRect,overlapRatio,snapRect,safeBounds,viewportBounds,geometryRect,writeRect,rectCenterInside,start};
 });
