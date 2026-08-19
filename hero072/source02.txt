@@ -72,21 +72,33 @@ function partSummary(c){
   const counts={}; for(const id of c.parts)counts[id]=(counts[id]||0)+1;
   return Object.entries(counts).map(([id,n])=>`${ITEMS[id]?.icon||'•'} ${ITEMS[id]?.name||id} ×${n}`).join(' · ')||'полезных частей не осталось';
 }
-function maxCraftable(r){return RULES.maxCraftable(hero.inv,r);}
+function maxCraftable(r){return RULES.craftLimit(hero.inv,r);}
 function canCraftAt(r){return r.station!=='camp'||dist(hero,world.camp)<=125;}
 function missingMaterials(r){return Object.entries(r.needs).filter(([id,n])=>(hero.inv[id]||0)<n).map(([id,n])=>`${ITEMS[id].name}: ${hero.inv[id]||0}/${n}`);}
 function hash2(x,y){let h=(x*374761393+y*668265263)>>>0;h=(h^(h>>13))*1274126177>>>0;return ((h^(h>>16))>>>0)/4294967295;}
-function terrainAt(x,y){
-  const d=Math.hypot(x-world.cx,y-world.cy), edge=world.radius-d;
-  if(edge<0)return 'water'; if(edge<115)return 'sand';
-  const angle=(Math.atan2(y-world.cy,x-world.cx)+TAU)%TAU;
-  const n=hash2(Math.floor(x/240),Math.floor(y/240));
-  if(angle>5.15||angle<.35)return n>.38?'rock':'meadow';
-  if(angle>2.05&&angle<2.9)return n>.42?'swamp':'forest';
-  if(d<1500)return n>.48?'darkforest':'forest';
-  return n>.56?'forest':'meadow';
+function terrainAt(x,y){return SECTORS.terrainAt(x,y,sectorConfig);}
+const terrainColor={water:'#063444',inlandwater:'#164f59',coast:'#a99362',meadow:'#47774d',forest:'#26583f',darkforest:'#153f34',swamp:'#37564b',rock:'#59615e'};
+
+function rememberBiome(biome){
+  hero.knowledge.biomes=hero.knowledge.biomes||[];
+  if(SECTORS.recordBiomeVisit(hero.knowledge.biomes,biome))toast(`📖 Открыт биом: ${SECTORS.BIOMES[biome]}`);
 }
-const terrainColor={water:'#063444',sand:'#a99362',meadow:'#47774d',forest:'#26583f',darkforest:'#153f34',swamp:'#37564b',rock:'#59615e'};
+function persistActiveSectors(){
+  const live=[...world.objects,...world.enemies,...world.carcasses];
+  for(const entity of live){if(!entity.uid)entity.uid=`player:${entity.kind||'carcass'}:${world.time}:${Math.random().toString(36).slice(2)}`;}
+  sectorManager.replaceActiveEntities(live);
+}
+function hydrateCreature(e){
+  const d=ENEMY_TYPES[e.type];if(!d)return e;e.id=e.uid;e.hp=Number.isFinite(e.hp)?e.hp:d.hp;e.maxHp=e.maxHp||d.hp;e.level=e.level||d.level;e.state=e.state||'wander';e.vx=e.vx||0;e.vy=e.vy||0;e.dir=Number.isFinite(e.dir)?e.dir:hash2(e.x,e.y)*TAU;e.think=e.think||0;e.attackCd=e.attackCd||0;e.slow=e.slow||0;return e;
+}
+function refreshSectorWorld(force=false){
+  const next=SECTORS.sectorCoords(hero.x,hero.y,sectorConfig),nextKey=`${next.sx},${next.sy}`;
+  if(!force&&sectorManager.current===nextKey)return;
+  if(sectorManager.current)persistActiveSectors();sectorManager.update(hero.x,hero.y);
+  const entities=sectorManager.activeEntities();world.objects=entities.filter(e=>e.kind==='plant'||e.kind==='resource'||e.kind==='trap');
+  world.enemies=entities.filter(e=>e.kind==='creature').map(hydrateCreature);world.carcasses=entities.filter(e=>e.kind==='carcass').map(ensureCarcass);
+  rememberBiome(terrainAt(hero.x,hero.y));
+}
 
 function addInv(id,n=1){hero.inv[id]=(hero.inv[id]||0)+n;toast(`Получено: ${ITEMS[id].icon} ${ITEMS[id].name}${n>1?' ×'+n:''}`);updateQuestOnItem(id);}
 function removeInv(id,n=1){if((hero.inv[id]||0)<n)return false;hero.inv[id]-=n;if(hero.inv[id]<=0)delete hero.inv[id];return true;}
@@ -99,34 +111,24 @@ function addKnowledgePlant(id,fact='seen'){
 function enemyKnowledge(type){return hero.knowledge.enemies[type]||(hero.knowledge.enemies[type]={seen:0,fought:0,killed:0,harvested:0});}
 
 function spawnWorld(){
-  world.objects=[];world.enemies=[];world.carcasses=[];world.time=0;world.day=1;
-  const plants=['root','bluecap','bloodleaf','ghostfern'];
-  for(let i=0;i<180;i++){
-    let p=randomLand(); let t=terrainAt(p.x,p.y); let id;
-    if(t==='swamp')id=Math.random()<.55?'bloodleaf':pick(plants);
-    else if(t==='darkforest')id=Math.random()<.5?'bluecap':'ghostfern';
-    else id=Math.random()<.55?'root':pick(plants);
-    world.objects.push({kind:'plant',id,x:p.x,y:p.y,r:8});
-  }
-  for(let i=0;i<90;i++){let p=randomLand();world.objects.push({kind:'resource',id:pick(['branch','stone','fiber','resin']),x:p.x,y:p.y,r:7});}
-  const counts={tick:28,grazer:22,boar:12,wolf:7};
-  for(const [type,n] of Object.entries(counts))for(let i=0;i<n;i++)spawnEnemy(type);
+  world.objects=[];world.enemies=[];world.carcasses=[];world.time=0;world.day=1;sectorManager.restore({seed:sectorConfig.seed});
   hero.x=world.camp.x+40;hero.y=world.camp.y;hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;hero.hunger=100;hero.tempPower=0;hero.tempPowerTime=0;target=null;
+  refreshSectorWorld(true);
 }
 function randomLand(){for(let i=0;i<200;i++){const a=Math.random()*TAU,r=Math.sqrt(Math.random())*(world.radius-150),p={x:world.cx+Math.cos(a)*r,y:world.cy+Math.sin(a)*r};if(terrainAt(p.x,p.y)!=='water')return p;}return {x:world.camp.x,y:world.camp.y};}
-function spawnEnemy(type,x=null,y=null){const d=ENEMY_TYPES[type],p=x==null?randomLand():{x,y};world.enemies.push({id:crypto.randomUUID?crypto.randomUUID():Math.random().toString(36),type,x:p.x,y:p.y,hp:d.hp,maxHp:d.hp,level:d.level,state:'wander',vx:0,vy:0,dir:Math.random()*TAU,think:0,attackCd:0,slow:0,dead:false});}
+function spawnEnemy(type,x=null,y=null){const d=ENEMY_TYPES[type],p=x==null?randomLand():{x,y},uid=crypto.randomUUID?crypto.randomUUID():Math.random().toString(36);world.enemies.push({uid,id:uid,kind:'creature',type,x:p.x,y:p.y,hp:d.hp,maxHp:d.hp,level:d.level,state:'wander',vx:0,vy:0,dir:Math.random()*TAU,think:0,attackCd:0,slow:0,dead:false});}
 
 function resetHeroNew(){
-  Object.assign(hero,{x:560,y:2650,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
+  Object.assign(hero,{x:world.camp.x+40,y:world.camp.y,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
     stats:{strength:10,endurance:10,agility:10,intelligence:10},statLatent:{strength:0,endurance:0,agility:0,intelligence:0},
     attack:11,defense:1,move:109,carry:30,tempPower:0,tempPowerTime:0,growthImpulse:null,
     inv:{spear:1,simple_trap:2},hotbar:['spear','simple_trap',null,null,null,null,null,null],selected:0,
-    knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,quest:0,levelProgress:0});
+    knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,invulnerableUntil:0,quest:0,levelProgress:0});
   ensureHeroFields();recomputeDerived(false);hero.hp=hero.maxHp;hero.stamina=hero.maxStamina;selectedCarcass=null;spawnWorld();saveGame(true,'auto');
 }
 function makeSaveData(){
   ensureHeroFields();
-  return {v:SAVE_VERSION,world:{time:world.time,day:world.day,objects:world.objects,enemies:world.enemies,carcasses:world.carcasses},hero:{...hero},savedAt:Date.now()};
+  persistActiveSectors();return {v:SAVE_VERSION,world:{time:world.time,day:world.day,sectorWorld:sectorManager.serialize()},hero:{...hero},savedAt:Date.now()};
 }
 function saveGame(silent=false,key='auto'){
   const storageKey=SAVE_KEYS[key]||key;
@@ -138,8 +140,14 @@ function loadGame(key='auto'){
     const storageKey=SAVE_KEYS[key]||key,raw=localStorage.getItem(storageKey);if(!raw)return false;
     const d=JSON.parse(raw);if(![7,8].includes(d.v))return false;
     Object.assign(hero,RULES.migrateHero(d.hero));ensureHeroFields();recomputeDerived(false);
-    world.time=d.world.time;world.day=d.world.day;world.objects=d.world.objects||[];world.enemies=d.world.enemies||[];
-    world.carcasses=(d.world.carcasses||[]).map(ensureCarcass);
+    world.time=d.world.time;world.day=d.world.day;
+    if(d.world.sectorWorld){sectorManager.restore(d.world.sectorWorld);refreshSectorWorld(true);}
+    else{
+      const safeHero=SECTORS.safeLandPoint(hero,world.camp,sectorConfig);hero.x=safeHero.x;hero.y=safeHero.y;
+      sectorManager.restore({seed:sectorConfig.seed});sectorManager.update(hero.x,hero.y);
+      const legacy=[...(d.world.objects||[]),...(d.world.enemies||[]),...(d.world.carcasses||[])];
+      SECTORS.sanitizeLegacyEntities(legacy,sectorConfig).forEach((e,i)=>sectorManager.upsert({...e,uid:e.uid||e.id||`legacy:${e.kind||'entity'}:${i}`,kind:e.kind||(e.type?'creature':'carcass')}));refreshSectorWorld(true);
+    }
     target=null;selectedCarcass=null;return true;
   }catch(e){console.error(e);return false;}
 }
@@ -166,10 +174,11 @@ updateContinue();
 let saveManagerMode='load',saveManagerFromStart=false;
 function openSaveManager(mode='load',fromStart=false){
   saveManagerMode=mode;saveManagerFromStart=fromStart;
+  saveManagerReturnSystem=!$('systemMenu').classList.contains('hidden');if(saveManagerReturnSystem)$('systemMenu').classList.add('hidden');
   $('saveManagerTitle').textContent=mode==='save'?'Сохранить игру':'Загрузить игру';
   $('saveManager').classList.remove('hidden');renderSaveSlots();
 }
-function closeSaveManager(){$('saveManager').classList.add('hidden');}
+function closeSaveManager(){$('saveManager').classList.add('hidden');if(saveManagerReturnSystem)$('systemMenu').classList.remove('hidden');saveManagerReturnSystem=false;}
 function renderSaveSlots(){
   const box=$('saveSlots');if(!box)return;box.innerHTML='';
   for(const key of ['auto','quick','slot1','slot2','slot3']){
@@ -180,7 +189,7 @@ function renderSaveSlots(){
     if(saveManagerMode==='load'&&!info)btn.disabled=true;
     btn.onclick=()=>{
       if(saveManagerMode==='save'){saveGame(false,key);renderSaveSlots();}
-      else{closeSaveManager();if(saveManagerFromStart)startGame(key);else{loadGame(key);world.paused=false;$('pauseScreen').classList.add('hidden');toast('Сохранение загружено');}}
+      else{const returnPaused=saveManagerReturnSystem?systemMenuReturnPaused:false;$('saveManager').classList.add('hidden');$('systemMenu').classList.add('hidden');saveManagerReturnSystem=false;if(saveManagerFromStart)startGame(key);else{loadGame(key);world.paused=returnPaused;showPauseIndicator();toast('Сохранение загружено');}}
     };
     box.appendChild(row);
   }
@@ -196,8 +205,9 @@ function importSaveFile(file){
   };reader.readAsText(file);
 }
 function threatFor(enemy){const delta=enemy.level-hero.level;let i=delta<-6?0:delta<5?1:delta<15?2:delta<30?3:4;return THREATS[i];}
+function setTarget(next){if(target===next)return false;target=next;renderTarget();return true;}
 function selectEnemy(e){
-  selectedCarcass=null;target=e;const k=enemyKnowledge(e.type);k.seen++;renderTarget();
+  selectedCarcass=null;const k=enemyKnowledge(e.type);k.seen++;if(!setTarget(e))renderTarget();
 }
 function selectCarcass(c){target=null;selectedCarcass=ensureCarcass(c);renderTarget();}
 function renderTarget(){

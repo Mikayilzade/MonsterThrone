@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('assert');
+const mobile=require('../hero072/mobile-controls.js');
+let passed=0;function test(name,fn){fn();passed++;console.log(`✓ ${name}`);}
+test('empty corpse does not hide lootable corpse at identical coordinates',()=>{const empty={uid:'a',x:10,y:10,parts:[]},loot={uid:'b',x:10,y:10,parts:['bone']};assert.strictEqual(mobile.nearestLootableCarcass([empty,loot],{x:0,y:0}),loot);loot.parts.shift();assert.strictEqual(mobile.nearestLootableCarcass([empty,loot],{x:0,y:0}),null);});
+test('repeated pickup advances through every lootable corpse',()=>{const corpses=[{uid:'a',x:0,y:0,parts:['bone']},{uid:'b',x:0,y:0,parts:['hide','meat']}],hero={x:0,y:0};let count=0,c;while((c=mobile.nearestLootableCarcass(corpses,hero))){c.parts.shift();count++;}assert.strictEqual(count,3);});
+test('corpse pile offsets and grouped totals are deterministic',()=>{const corpses=[{x:1,y:1,parts:[]},{x:1,y:1,parts:['bone','hide']}];const a=mobile.corpsePileLayout(corpses),b=mobile.corpsePileLayout(corpses);assert.deepStrictEqual([...a.values()],[...b.values()]);assert.deepStrictEqual([...a.values()].map(x=>[x.count,x.parts,x.label]),[[2,2,true],[2,2,false]]);});
+test('selected slot refreshes an open inventory only on change',()=>{assert(mobile.shouldRefreshInventory(0,1,'inventory'));assert(!mobile.shouldRefreshInventory(1,1,'inventory'));assert(!mobile.shouldRefreshInventory(0,1,'craft'));});
+test('sanctuary permits outgoing attacks but continues blocking incoming damage',()=>{const camp={x:0,y:0},inside={x:10,y:0},outside={x:300,y:0};assert(mobile.canAttackTarget(inside,outside,camp,260));assert(!mobile.canDamageHero(inside,10,camp,260));assert(mobile.canAttackTarget(outside,{x:320,y:0},camp,260));assert(mobile.canDamageHero(outside,10,camp,260));});
+test('distant AI is unaffected and boundary ejects only nearby creatures',()=>{const camp={x:0,y:0},near={x:250,y:0,state:'attack'},far={x:900,y:0,state:'attack'};assert(mobile.applySafeZoneBoundary(near,camp,260));assert(!mobile.applySafeZoneBoundary(far,camp,260));assert.strictEqual(far.x,900);});
+test('five second respawn protection has an exact endpoint',()=>{const hero={x:400,y:0,invulnerableUntil:15},camp={x:0,y:0};assert(!mobile.canDamageHero(hero,14.999,camp,260));assert(mobile.canDamageHero(hero,15,camp,260));});
+test('traps are blocked inside or across sanctuary boundary',()=>{const camp={x:0,y:0};assert(!mobile.canPlaceTrap({x:0,y:0},{x:300,y:0},camp,260));assert(!mobile.canPlaceTrap({x:280,y:0},{x:250,y:0},camp,260));assert(mobile.canPlaceTrap({x:280,y:0},{x:322,y:0},camp,260));});
+console.log(`\n${passed}/8 Stage 2A stabilization tests passed.`);

@@ -1,0 +1,19 @@
+/* Stage 3B: per-profile sizing, presets and portable HUD import/export. */
+.hud-portability-card{
+  margin-top:12px;padding:14px;border:1px solid rgba(119,190,176,.28);border-radius:14px;background:rgba(8,31,37,.52);
+  display:grid;gap:12px;
+}
+.hud-portability-heading{display:grid;gap:3px}.hud-portability-heading strong{font-size:14px}.hud-portability-heading small{color:#9ebcb5;line-height:1.35}
+.hud-scale-row{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,2fr) 54px;gap:10px;align-items:center}
+.hud-scale-row label{font-size:13px}.hud-scale-row input{width:100%}.hud-scale-row output{text-align:right;font-weight:700;color:#b9e6da}
+.hud-portability-actions{display:flex;gap:8px;flex-wrap:wrap}.hud-portability-actions button{flex:1 1 150px}
+.hud-preset-list{display:grid;gap:7px}
+.hud-preset-row{display:grid;grid-template-columns:minmax(150px,1fr) auto auto auto;gap:7px;align-items:center;padding:8px;border-top:1px solid rgba(119,190,176,.16)}
+.hud-preset-row:first-child{border-top:0}.hud-preset-row span{display:grid;gap:1px}.hud-preset-row small{color:#8ea9a4;font-size:10px}
+.hud-preset-row button{min-width:0;padding-inline:10px}.hud-preset-row button:last-child{width:40px;padding-inline:0}
+@media(max-width:620px){
+  .hud-portability-card{padding:10px;gap:10px}.hud-scale-row{grid-template-columns:1fr 52px}.hud-scale-row label{grid-column:1/-1}.hud-preset-row{grid-template-columns:1fr 1fr 1fr 40px}.hud-preset-row span{grid-column:1/-1}
+}
+@media(max-height:520px){
+  .hud-portability-card{padding:8px}.hud-portability-heading small{display:none}.hud-preset-row{padding:5px 6px}.hud-preset-row small{display:none}
+}

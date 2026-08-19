@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="theme-color" content="#07151b" />
-  <title>Monster Throne v0.7.2 — Понятное развитие и крафт</title>
+  <title>Monster Throne v0.8 — Секторный мир</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -26,6 +26,7 @@
         <button data-panel="inventory" title="Инвентарь (I)">🎒</button>
         <button data-panel="craft" title="Крафт (C)">🛠</button>
         <button data-panel="book" title="Книга мира (J)">📖</button>
+        <button id="systemMenuBtn" title="Системное меню">⚙</button>
         <button id="pauseBtn" title="Пауза (P)">Ⅱ</button>
       </nav>
     </header>
@@ -44,6 +45,10 @@
     </section>
 
     <section id="combatLog" class="combatlog glass hidden"></section>
+    <section id="worldStatus" class="world-status glass">
+      <strong id="biomeName">Побережье</strong>
+      <small id="sectorDebug">секторы: 0 / 0</small>
+    </section>
     <div id="prompt" class="prompt hidden"></div>
     <div id="toasts" class="toasts"></div>
 
@@ -87,19 +92,56 @@
     </div>
   </div>
 
-  <div id="pauseScreen" class="modal-layer hidden">
+  <div id="pauseScreen" class="pause-indicator glass hidden" role="status">
+    <div><small>ТАКТИЧЕСКАЯ ПАУЗА</small><strong>Мир остановлен</strong></div>
+    <button id="pauseSystemBtn">Меню</button>
+    <button id="resumeBtn" class="primary">Продолжить</button>
+  </div>
+
+  <div id="systemMenu" class="modal-layer hidden">
     <div class="pausecard glass">
-      <small>ТАКТИЧЕСКАЯ ПАУЗА</small>
-      <h2>Мир остановлен</h2>
-      <p>Можно спокойно открыть сумку, книгу или крафт и решить, что делать дальше.</p>
-      <div class="startactions">
-        <button id="resumeBtn" class="primary">Продолжить</button>
+      <small>СИСТЕМНОЕ МЕНЮ</small>
+      <h2>Настройки</h2>
+      <p>Симуляция остановлена, пока открыто системное меню.</p>
+      <div class="tabs system-tabs">
+        <button data-system-tab="game" class="active">Игра</button>
+        <button data-system-tab="interface">Интерфейс</button>
+        <button data-system-tab="controls">Управление</button>
+        <button data-system-tab="saves">Сохранения</button>
+      </div>
+      <section data-system-page="game" class="system-page">
+        <label class="setting"><input id="desktopTouchControls" type="checkbox"> Показывать экранные кнопки действий на ПК</label>
+        <label class="setting"><input id="advancedKeyboardSettings" type="checkbox"> Расширенные настройки физической клавиатуры</label>
+      </section>
+      <section data-system-page="interface" class="system-page hidden">
+        <div class="hud-interface-card">
+          <small>ТЕКУЩИЙ ПРОФИЛЬ</small>
+          <strong id="hudProfileName">Определяется…</strong>
+          <span>Поверни телефон, чтобы редактировать другую ориентацию. Компьютер хранит отдельную раскладку.</span>
+        </div>
+        <div class="hud-interface-card">
+          <div class="hud-interface-row"><label for="hudActionMode">Кнопки действий</label><select id="hudActionMode"><option value="group">Единый блок 2×2</option><option value="individual">Раздельное размещение</option></select></div>
+          <small>В редакторе элементы можно перетаскивать и менять размер. Быстрые слоты и миникарту можно скрыть.</small>
+        </div>
+        <div class="hud-interface-actions">
+          <button id="hudEditCurrent" class="primary">Настроить текущий экран</button>
+          <button id="hudResetCurrent">Сбросить текущую раскладку</button>
+          <button id="hudResetAll">Сбросить все раскладки</button>
+        </div>
+      </section>
+      <section data-system-page="controls" class="system-page hidden">
+        <p class="binding-help">Выберите кнопку и нажмите клавишу. Escape отменяет, Backspace/Delete очищает.</p>
+        <div id="controlBindings" class="binding-list"></div>
+        <button id="resetBindings">Сбросить по умолчанию</button>
+      </section>
+      <section data-system-page="saves" class="system-page hidden"><div class="startactions">
         <button id="saveBtn">Быстро сохранить</button>
         <button id="saveSlotsBtn">Сохранить в слот…</button>
         <button id="loadSlotsBtn">Загрузить…</button>
         <button id="exportSaveBtn">Экспорт сейва</button>
         <button id="newFromPauseBtn">Новая игра</button>
-      </div>
+      </div></section>
+      <button id="systemMenuClose" class="primary">Закрыть</button>
     </div>
   </div>
 
@@ -123,12 +165,16 @@
       <small>ЯКОРЬ ВЕЧНОЙ ДУШИ</small>
       <h2>Тело погибло. Душа цела.</h2>
       <p id="deathText"></p>
-      <p>Сумка, знания и постоянное развитие сохранятся. Временное усиление исчезнет.</p>
+      <p><strong>Сохранены:</strong> уровень, характеристики, знания, инвентарь и экипировка.</p>
+      <p><strong>Потеряны:</strong> только временные усиления. Герой возвращается в лагерь.</p>
       <b id="respawnText">Возвращение через 3…</b>
     </div>
   </div>
 
   <script src="./rules.js"></script>
+  <script src="./sector-world.js"></script>
+  <script src="./mobile-controls.js"></script>
+  <script src="./control-bindings.js"></script>
   <script src="./boot.js"></script>
 </body>
 </html>

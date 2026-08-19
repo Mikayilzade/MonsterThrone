@@ -37,7 +37,7 @@ const ITEMS = {
   bone:{name:'Кость',icon:'🦴',type:'material',desc:'Твёрдая кость. Подойдёт для орудий и ловушек.'},
   rope:{name:'Верёвка из волокон',icon:'🪢',type:'material',desc:'Плотно скрученные волокна для оружия, ловушек и снаряжения.'},
   bone_tip:{name:'Костяной наконечник',icon:'🔻',type:'component',desc:'Заточенная костяная деталь для древкового оружия.'},
-  bone_knife:{name:'Костяной нож',icon:'🔪',type:'tool',desc:'Инструмент для более уверенной и аккуратной разделки.'},
+  bone_knife:{name:'Костяной нож',icon:'🔪',type:'tool',desc:'Уникальный инструмент: +12% к эффективности разделки.'},
   venom:{name:'Ядовитая железа',icon:'🫧',type:'material',desc:'Опасный орган. Лучше не пробовать его напрямую.'},
   simple_trap:{name:'Простая ловушка',icon:'🪤',type:'tool',desc:'Ранит и ненадолго удерживает существо.'},
   roasted_root:{name:'Запечённый корень',icon:'🍠',type:'food',desc:'После огня стал мягче и пахнет безопаснее.'},
@@ -72,8 +72,8 @@ const THREATS=[['серый','#9ba9a5'],['светло-жёлтый','#e2dd90'],
 
 const RECIPES = [
   {id:'rope',name:'Скрутить верёвку',icon:'🪢',needs:{fiber:3},out:{rope:1},known:true,station:'any',group:'components',text:'Плотно скрутить и связать длинные волокна.'},
-  {id:'bone_tip',name:'Костяной наконечник',icon:'🔻',needs:{bone:1,stone:1},out:{bone_tip:1},known:true,station:'any',group:'components',text:'Обточить кость острым камнем.'},
-  {id:'bone_knife',name:'Костяной нож',icon:'🔪',needs:{bone:2,stone:1,fiber:1},out:{bone_knife:1},known:true,station:'any',group:'equipment',text:'Простой инструмент, который помогает при разделке.'},
+  {id:'bone_tip',name:'Костяной наконечник',icon:'🔻',needs:{bone:1,stone:1},out:{bone_tip:1},known:true,station:'any',group:'components',limited:true,text:'Нужен один наконечник для улучшения копья. Будущие применения появятся в следующих этапах.'},
+  {id:'bone_knife',name:'Костяной нож',icon:'🔪',needs:{bone:2,stone:1,fiber:1},out:{bone_knife:1},known:true,station:'any',group:'equipment',unique:true,text:'Уникальный инструмент: +12% к эффективности разделки.'},
   {id:'improved_spear',name:'Улучшить копьё',icon:SPEAR_ICON,needs:{spear:1,bone_tip:1,rope:1},out:{improved_spear:1},known:true,station:'camp',group:'equipment',unique:true,text:'Заменить грубое острие костяным наконечником и усилить обвязку.'},
   {id:'simple_trap',name:'Простая ловушка',icon:'🪤',needs:{branch:2,stone:1,rope:1},out:{simple_trap:1},known:true,station:'any',group:'tools',text:'Ветки, груз и прочная верёвка.'},
   {id:'bandage',name:'Грубая повязка',icon:'🩹',needs:{fiber:2,bloodleaf:1},out:{bandage:1},known:true,station:'any',group:'tools',text:'Перевязка из волокон и свежего кроволиста.'},
@@ -92,16 +92,24 @@ const canvas=$('game'), ctx=canvas.getContext('2d');
 let DPR=1, W=0,H=0;
 function resize(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;canvas.width=W*DPR;canvas.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);} addEventListener('resize',resize);resize();
 
-const world={size:5200,cx:2600,cy:2600,radius:2440,camp:{x:520,y:2650},time:0,day:1,paused:false,objects:[],enemies:[],carcasses:[],damage:[]};
-const hero={x:560,y:2650,radius:12,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
+const SECTORS=window.MonsterThroneSectorWorld;
+const MOBILE=window.MonsterThroneMobile;
+const BINDINGS=window.MonsterThroneBindings;
+let controlBindings=BINDINGS.load(localStorage),rebindTarget=null;
+const sectorManager=new SECTORS.SectorManager({seed:'monster-throne-main-v08'}),sectorConfig=sectorManager.config;
+const world={size:sectorConfig.size,cx:sectorConfig.cx,cy:sectorConfig.cy,radius:sectorConfig.radius,camp:sectorConfig.camp,time:0,day:1,paused:false,objects:[],enemies:[],carcasses:[],damage:[],seed:sectorConfig.seed};
+const hero={x:world.camp.x+40,y:world.camp.y,radius:12,hp:100,maxHp:100,stamina:100,maxStamina:100,hunger:100,level:1,ceiling:1,
   stats:{strength:10,endurance:10,agility:10,intelligence:10},
   statLatent:{strength:0,endurance:0,agility:0,intelligence:0},
   attack:11,defense:1,move:109,carry:30,tempPower:0,tempPowerTime:0,growthImpulse:null,
   inv:{spear:1,simple_trap:2},hotbar:['spear','simple_trap',null,null,null,null,null,null],selected:0,
-  knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,quest:0,levelProgress:0};
+  knowledge:{plants:{},enemies:{},reactions:[],experimentNotes:[]},skills:{},equipment:{weapon:'spear'},weaponQuality:{spear:1},lastHit:null,deaths:0,playTime:0,lastSave:0,respawning:false,invulnerableUntil:0,quest:0,levelProgress:0};
 let keys={},mouse={x:0,y:0,down:false,worldX:0,worldY:0};
 let target=null, selectedCarcass=null, nearObject=null, panelType=null, lastFrame=performance.now(), attackCd=0,dodgeCd=0,dodgeTime=0,dodgeVX=0,dodgeVY=0,autoSaveTimer=0;
 let mobileVec={x:0,y:0};
+let lastAimDirection={x:1,y:0},lastMobileAction='none',lastInputWasTouch=false,hotbarRenderKey='',lastSanctuaryToast=-Infinity;
+const ZOOM_KEY='monsterThrone.cameraZoom';let cameraZoom=MOBILE.clamp(Number(localStorage.getItem(ZOOM_KEY))||1,.65,1.65),pinch=MOBILE.createPinchState(cameraZoom,.65,1.65),suppressCanvasTap=false,pendingCanvasTouch=null;
+const CAMP_SAFE_RADIUS=260;
 
 
 const SKILL_META={

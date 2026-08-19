@@ -1,5 +1,7 @@
 'use strict';
 const assert=require('assert');
+const fs=require('fs');
+const path=require('path');
 const rules=require('../hero072/rules.js');
 
 let passed=0;
@@ -96,4 +98,26 @@ test('next threshold is understandable and monotonic',()=>{
   assert(next.maxDamage>=now.maxDamage);
 });
 
-console.log(`\n${passed}/9 hero v0.7.2 tests passed.`);
+test('unique knife and single-use bone tip have honest craft limits',()=>{
+  const knife={id:'bone_knife',unique:true,needs:{bone:2,stone:1,fiber:1},out:{bone_knife:1}};
+  const tip={id:'bone_tip',needs:{bone:1,stone:1},out:{bone_tip:1}};
+  assert.strictEqual(rules.craftLimit({bone:4,stone:3,fiber:2},knife),2);
+  assert.strictEqual(rules.craftLimit({bone_knife:1,bone:4,stone:3,fiber:2},knife),0);
+  assert.strictEqual(rules.craftLimit({bone:4,stone:3},tip),1);
+  assert.strictEqual(rules.craftLimit({bone_tip:1,bone:4,stone:3},tip),0);
+  assert.strictEqual(rules.craftLimit({improved_spear:1,bone:4,stone:3},tip),0);
+});
+
+test('browser source assembly preserves whitespace required by Skills tab',()=>{
+  const dir=path.join(__dirname,'../hero072'),files=['source01.txt','source02.txt','source03.txt','source04a.txt','source04b.txt','source05.txt','source06.txt'];
+  const source=files.map(name=>fs.readFileSync(path.join(dir,name),'utf8').replace(/^[\r\n]+|[\r\n]+$/g,'')).join('');
+  assert(source.includes("const sk=hero.skills[id]"));assert(!source.includes('constsk='));assert.doesNotThrow(()=>new Function(source));
+});
+
+test('tactical pause, system menu and death outcome are distinct in markup',()=>{
+  const html=fs.readFileSync(path.join(__dirname,'../hero072/index.html'),'utf8');
+  assert(html.includes('class="pause-indicator glass hidden"'));assert(html.includes('id="systemMenu" class="modal-layer hidden"'));
+  assert(html.includes('уровень, характеристики, знания, инвентарь и экипировка'));assert(html.includes('только временные усиления'));
+});
+
+console.log(`\n${passed}/12 hero v0.7.2 tests passed.`);

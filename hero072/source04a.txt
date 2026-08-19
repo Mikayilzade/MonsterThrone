@@ -6,6 +6,7 @@
 function craftRecipe(r,qty=1){
   if(!canCraftAt(r))return toast('Для этого нужен костёр в лагере.','bad');
   if(r.unique&&(hero.inv[r.id]||0)>0)return toast('Этот предмет уже изготовлен.','bad');
+  if(r.id==='bone_tip'&&((hero.inv.bone_tip||0)>0||(hero.inv.improved_spear||0)>0))return toast('Нужный наконечник уже готов или использован. Новые применения появятся позже.','bad');
   const max=maxCraftable(r);qty=Math.max(1,Math.min(max,Math.floor(Number(qty)||1)));if(r.unique)qty=1;
   if(max<=0)return toast(`Не хватает материалов: ${missingMaterials(r).join(' · ')}`,'bad');
   const result=RULES.applyRecipe(hero.inv,r,qty);if(!result.ok)return toast('Не хватает материалов.','bad');hero.inv=result.inventory;
@@ -77,4 +78,4 @@ function renderCharacter(body){
   };
   const renderSkills=()=>{
     const spear=hero.skills.spear,current=combatProfile(target&&!target?.dead?target:null),nextAt=RULES.nextSkillThreshold(spear.mastery),next=combatProfile(target&&!target?.dead?target:null,nextAt);
-    const otherSkill=(id)=>{const 
+    const otherSkill=(id)=>{const
